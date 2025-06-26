@@ -1,0 +1,29 @@
+[project]
+name = "image-classification-competition"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # Deep Learning
+    "timm",
+    "transformers",
+    "opencv-python",
+    # Machine Learning
+    "pandas",
+    "scikit-learn",
+    "optuna",
+    "scipy",
+    # Utilities
+    "tqdm",
+    "python-dotenv",
+    "matplotlib",
+    "scipy",
+    "imgaug",
+    "albumentations",
+    "pyyaml",
+    "notebook",
+    "ipykernel",
+    "ipython",
+    "augraphy>=8.2.6",
+]

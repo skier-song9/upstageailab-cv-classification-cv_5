@@ -31,8 +31,8 @@
 - `uv --version`을 통해 uv 명령어가 잘 작동하는지 확인합니다.
 
 ## 🕹️aistages 서버 사용할 때 > container에 직접 설치
-- `uv pip install -r requirements.txt` : PyTorch를 CUDA 12.1버전용으로 다운받아아 하므로 requirements.txt를 먼저 설치한다.
-- `uv pip install -r pyproject.toml` : 나머지 의존성을 설치한다.
+- `uv pip install -r requirements.txt --system` : PyTorch를 CUDA 12.1버전용으로 다운받아아 하므로 requirements.txt를 먼저 설치한다.
+- `uv pip install -r pyproject.toml --system` : 나머지 의존성을 설치한다.
 
 ## 🖥️Local 환경에서 실험할 때 > venv 사용
 ### 🔄Sync 의존성 동기화

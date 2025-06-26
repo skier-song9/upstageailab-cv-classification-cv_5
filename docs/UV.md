@@ -4,6 +4,7 @@
     - [🕹️aistages 환경](#️aistages-서버-사용할-때--container에-직접-설치)
     - [🖥️local 환경](#️local-환경에서-실험할-때--venv-사용)
 - [📦추가 정보](#추가-정보)
+    - [📥의존성 관리 ⭐](#-의존성-관리-)
 
 # 🚀필수
 - UV Installation, uv sync를 통해 가상환경을 만드세요!
@@ -19,9 +20,9 @@
 `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 - 설치가 완료되었다면, `uv --version`을 통해 uv 명령어가 잘 인식되는지 확인합니다. 만약 `uv command is not found` 에러가 발생했다면 uv 환경변수 추가를 진행합니다.
 
-### uv 환경변수 추가
+#### ⚙️uv 환경변수 추가
 - aistages 서버라면, uv 실행파일이 `/data/ephemeral/home/.local/bin`에 있을 겁니다.
-    `vim /root/.bashrc` 를 통해 환경설정 파일을 편집합니다.
+    `vim .bashrc` 를 통해 환경설정 파일을 편집합니다.
 - .bashrc 파일의 맨 마지막줄에 다음과 같이 추가하고, `:wq` 를 입력하여 저장합니다.
     ```bash
     export PATH="/data/ephemeral/home/.local/bin:$PATH"
@@ -30,7 +31,8 @@
 - `uv --version`을 통해 uv 명령어가 잘 작동하는지 확인합니다.
 
 ## 🕹️aistages 서버 사용할 때 > container에 직접 설치
-- `uv pip install -r uv.lock`
+- `uv pip install -r requirements.txt` : PyTorch를 CUDA 12.1버전용으로 다운받아아 하므로 requirements.txt를 먼저 설치한다.
+- `uv pip install -r pyproject.toml` : 나머지 의존성을 설치한다.
 
 ## 🖥️Local 환경에서 실험할 때 > venv 사용
 ### 🔄Sync 의존성 동기화
@@ -63,18 +65,19 @@
 `.venv\Scripts\Activate.ps1`
 - 비활성화는 모두 공통 : `deactivate`
 
-## 📥 의존성 관리
+## 📥 의존성 관리 ⭐
 ### 📌lock 파일 생성
 - `uv lock` : 현재 venv 환경을 `uv.lock` 파일로 생성한다.
 
 ### 🔄lock 파일로부터 venv 구성하기
 - `uv sync` : `uv.lock` 파일이 존재한다면, `uv pip install` 없이 이를 통해 .venv/를 구성할 수 있다.
+    - `uv pip sync` : .venv (가상환경)을 구성하지 않고 직접 시스템에 의존성 설치를 진행한다.
 
-### ➖특정 의존성 제거
+### ➖특정 의존성 제거 ⭐
 - `uv remove <package>` : 해당 의존성을 제거하고 pyproject.toml, uv.lock을 업데이트하는 명령어
     - e.g. `uv remove pandas`
 
-### ➕특정 의존성 추가
+### ➕특정 의존성 추가 ⭐
 - `uv add <pacakge>` : 해당 의존성을 추가하고 pyproject.toml, uv.lock을 업데이트하는 명령어
     - e.g. `uv add imgaug`
 

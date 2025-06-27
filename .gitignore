@@ -8,6 +8,10 @@ data/submissions/*.csv
 
 !init.txt
 !__init__.py
+
+logs/*
+!logs/init.txt
+*.out
 ### <<< Custom gitignore <<<
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,python,venv,jupyternotebooks,macos,windows

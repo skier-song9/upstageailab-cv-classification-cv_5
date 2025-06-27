@@ -28,4 +28,5 @@ dependencies = [
     "ipykernel",
     "ipython",
     "augraphy>=8.2.6",
+    "nbconvert==7.12.0"
 ]

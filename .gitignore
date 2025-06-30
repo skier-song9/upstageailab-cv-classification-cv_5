@@ -14,6 +14,18 @@ logs/*
 *.out
 ### <<< Custom gitignore <<<
 
+### >>> song gitignore >>>
+data/*.jpg
+data/test/
+data/train/
+*.lock
+*.tar
+*.tar.gz
+
+wandb/
+.wandb
+### <<< song gitignore <<<
+
 # Created by https://www.toptal.com/developers/gitignore/api/linux,python,venv,jupyternotebooks,macos,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,python,venv,jupyternotebooks,macos,windows
 

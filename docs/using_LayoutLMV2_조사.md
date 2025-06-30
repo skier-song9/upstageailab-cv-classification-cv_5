@@ -52,6 +52,15 @@ https://www.kaggle.com/code/anantgupt/document-classification-layoutlmv2#Infrenc
 ### 사용한 모델
 문서 이미지 + 텍스트 + 레이아웃(위치) 정보를 동시에 활용해 문서 이해(Document Understanding)를 수행하는 멀티모달 Transformer 모델인 LayoutLMv2
 
+📌 무엇이 다른가?
+✅ 텍스트 + 이미지 + 위치(bbox) 동시 입력
+
+- OCR로 추출한 텍스트 (Token IDs)
+
+- 문서 이미지 자체 (RGB 이미지)
+
+- 각 토큰의 이미지 내 위치 (Bounding Box 좌표)
+
 ### 데이터 증강
 - 증강 기법, augmentation 미사용
 

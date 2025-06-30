@@ -22,7 +22,7 @@ dependencies = [
     "matplotlib",
     "scipy",
     "imgaug",
-    "albumentations",
+    "albumentations==2.0.8",
     "pyyaml",
     "notebook",
     "ipykernel",

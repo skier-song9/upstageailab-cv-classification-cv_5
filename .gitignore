@@ -24,6 +24,8 @@ data/train/
 
 wandb/
 .wandb
+
+*.pth
 ### <<< song gitignore <<<
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,python,venv,jupyternotebooks,macos,windows

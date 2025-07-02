@@ -20,7 +20,7 @@
 
 | Train | Test |
 |---|---|
-| ![train bright](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/tree/main/docs/images/train_bright.png) | ![test bright](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/docs/test_bright.png) |
+| ![train bright](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_bright.png) | ![test bright](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_bright.png) |
 
 > 해석 : test 데이터셋이 train 데이터셋보다 평균적으로 20정도 더 밝다. 아래 Color Channel에서 코드를 같이 다룬다.
 
@@ -31,7 +31,7 @@
 
 | Train | Test |
 |---|---|
-| ![train contrast](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/tree/main/docs/images/train_contrast.png) | ![test contrast](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/docs/test_contrast.png) |
+| ![train contrast](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_contrast.png) | ![test contrast](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_contrast.png) |
 
 > 해석 : 평균, 분산, 표준편차에 큰 차이가 없다.
 > ColotJitter에서 큰 변화를 주지 않아야 한다.
@@ -43,7 +43,7 @@
 
 | Train | Test |
 |---|---|
-| ![train color channel](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/tree/main/docs/images/train_colorchannel.png) | ![test color channel](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/docs/test_colorchannel.png) |
+| ![train color channel](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_colorchannel.png) | ![test color channel](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_colorchannel.png) |
 
 > 해석 : test 데이터셋의 RGB 분포가 평균적으로 20 정도 오른쪽으로 치우쳤다. ColorJittering에 반영해야 한다.
 ```python
@@ -60,7 +60,7 @@ A.ColorJitter(brightness=0.1, contrast=0.07, saturation=0.07, hue=0.07, p=1.0)
 
 | Train | Test |
 |---|---|
-| ![train blur](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/tree/main/docs/images/train_blur.png) | ![test blur](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/docs/test_blur.png) |
+| ![train blur](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_blur.png) | ![test blur](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_blur.png) |
 
 > 해석 : Laplacian variance가 작을수록 선명도가 낮아진다. test의 Laplacian variance가 더 좌측에 치우쳤으며 더 첨도가 작다. 이는 **test 데이터셋에 선명한 이미지가 train보다 현저히 적으며**, 특정 수준의 흐릿한 이미지가 지배적이다(아마 Mixup의 영향이 있지 않을까 싶다).
 ```python
@@ -81,7 +81,7 @@ A.OneOf([
 
 | Train | Test |
 |---|---|
-| ![train noise](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/tree/main/docs/images/train_noise.png) | ![test noise](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/docs/test_noise.png) |
+| ![train noise](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_noise.png) | ![test noise](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_noise.png) |
 
 > 해석 : Wavelet 변환을 통해 구한 통계값으로 추정한 노이즈 분포는 Train에서 더 첨도가 작고 분포도 왼쪽으로 더 치우쳐있다. 이는 test 데이터셋의 노이즈 강도가 더 강함을 의미한다.
 ```python
@@ -102,7 +102,7 @@ A.GaussNoise(std_range=(0.0025, 0.2), p=1.0),, # p 확률로 가우시안 노이
 
 | Train | Test |
 |---|---|
-| ![train aspect](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/tree/main/docs/images/train_aspect.png) | ![test aspect](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/docs/test_aspect.png) |
+| ![train aspect](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_aspect.png) | ![test aspect](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_aspect.png) |
 
 > 해석 : Train에서는 0.7, 1.3~1.5 종횡비가 가장 많았고, Test에서도 마찬가지였는데 4:3 종횡비가 급증했다.    
 > Multi-Crop(multi-view) training 또는 inference가 도움이 될 수 있다.   
@@ -122,7 +122,7 @@ A.PadIfNeeded(min_height=CFG.image_size, min_width=CFG.image_size,
 
 | Train | Test |
 |---|---|
-| ![train rotation](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/tree/main/docs/images/train_rotation.png) | ![test rotation](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/docs/test_rotation.png) |
+| ![train rotation](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_rotation.png) | ![test rotation](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_rotation.png) |
 
 > 해석 : 히스토그램과 달리 0~360도의 다양한 회전이 적용됨. 그러나 Transpose 때문에 rotate을 심하게 주면 안 됨.
 ```python

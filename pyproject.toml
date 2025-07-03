@@ -31,4 +31,5 @@ dependencies = [
     "nbconvert==7.12.0",
     "wandb>=0.20.1",
     "pywavelets>=1.8.0",
+    "seaborn>=0.13.2",
 ]

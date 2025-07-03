@@ -26,6 +26,9 @@ wandb/
 .wandb
 
 *.pth
+
+data/submissions/*
+data/submissions/**
 ### <<< song gitignore <<<
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,python,venv,jupyternotebooks,macos,windows
@@ -301,3 +304,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,python,venv,jupyternotebooks,macos,windows
+
+# Obsidian
+.obsidian/

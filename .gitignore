@@ -303,4 +303,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.toptal.com/developers/gitignore/api/linux,python,venv,jupyternotebooks,macos,windows.obsidian/
+# End of https://www.toptal.com/developers/gitignore/api/linux,python,venv,jupyternotebooks,macos,windows
+
+# Obsidian
+.obsidian/

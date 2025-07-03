@@ -26,6 +26,9 @@ wandb/
 .wandb
 
 *.pth
+
+data/submissions/*
+data/submissions/**
 ### <<< song gitignore <<<
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,python,venv,jupyternotebooks,macos,windows

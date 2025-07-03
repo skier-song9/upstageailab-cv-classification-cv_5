@@ -1,0 +1,85 @@
+# Configuration for the training process
+model_name: 'resnet50.tv2_in1k' # timm model name
+pretrained: True # timm pretrained 가중치 사용 여부
+fine_tuning: "full" # fine-tuning 방법론
+  # full : pretrained=True, pretrained가중치를 전부 재학습시킨다. 
+  # head : pretrained=True, model backbone 부분은 freeze하고 head 부분을 재학습시킨다.
+  # custom : pretrained=True, backbone에서도 일부분을 재학습시킨다.
+  # scratch : pretrained=False, 모델 구조만 사용하고 모든 가중치를 처음부터 학습시킨다.
+
+# Loss Function
+criterion: 'CrossEntropyLoss'
+
+# Optimizer
+# optimizer name: SGD, RMSprop, Momentum, NAG, Adam, AdamW, NAdam, RAdam, Adafactor
+# reference : https://www.notion.so/skier-song9/Pytorch-9cfee0520ed6468a94b024ea35e48018?source=copy_link#217c8d3f60f58044beeac55596433dc6
+optimizer_name: 'AdamW'
+# optimizer_params:
+lr: 0.0001 # 1e-4
+weight_decay: 0.00001 # 1e-5
+
+# Scheduler
+# scheduler_name : StepLR, ExponentialLR, CosineAnnealingLR, OneCycleLR, ReduceLROnPlateau
+# reference : https://www.notion.so/skier-song9/Pytorch-9cfee0520ed6468a94b024ea35e48018?source=copy_link#1d2c8d3f60f58026b71ad399ead029a9    
+scheduler_name: 'CosineAnnealingLR'
+# scheduler_params:
+#   max_lr: 0.01 # for OneCycleLR
+  # step_size: 50 # for StepLR
+  # gamma: 0.1 # for StepLR, ExponentialLR
+  # T_max: 10000 # for CosineAnnealingLR
+  # mode: 'min' # for ReduceLROnPlateau
+  # factor: 0.1 # for ReduceLROnPlateau
+  # min_lr: 0 # for ReduceLROnPlateau
+
+# Other variables
+random_seed: 256
+n_folds: 0 # number of folds for cross-validation
+val_split_ratio: 0.15 # train-val split 비율
+stratify: True # validation set 분할 시 stratify 전략 사용 여부
+image_size: 224 # 만약 multi-scale train/test 시 None으로 설정
+
+# Normalization
+# full file tuning 시 0.5가 유리
+# pre-trained 모델 사용 시 pre-trained 모델의 mean, std를 사용
+norm_mean: [0.5, 0.5, 0.5]
+norm_std: [0.5, 0.5, 0.5]
+
+# Techniques
+class_imbalance: 
+  aug_class: [1, 13, 14]
+  max_samples: 78
+online_augmentation: True
+augmentation:
+  eda: True
+  dilation: True
+  erosion: False
+  mixup: False
+  cutmix: False
+  # you can add more augmentations here, e.g.,
+  # random_crop: True
+  # color_jitter: True
+TTA: True # Test Time Augmentation 사용 여부
+mixed_precision: True # Mixed Precision 학습 사용 여부 > 사용하면 더 큰 batch_size 학습 가능
+
+# Model hyperparameters
+timm:
+  activation: None # ReLU, LeakyReLU, ELU, SELU, GELU, Tanh, PReLU, SiLU
+  # None 입력시 timm 모델의 기본 activation 사용
+  # head: # head가 있는 모델인 경우 dropout 설정
+  #   drop: 0.2
+custom_layer: # custom classifier head를 사용하고 싶은 경우 설정. None일 때 custom head 사용 안 함. 
+  # drop: 0.2
+  # activation: 'GELU'
+
+# Training hyperparameters
+epochs: 10000 # max epoch
+patience: 20 # early stopping patience
+batch_size: 32 # image_size, model_size, GPU RAM 에 따라 OOM이 발생하지 않도록 설정.
+
+# W&B
+wandb:
+  project: "upstage-img-clf"
+  log: True # log using wandb, if False then do not use wandb
+
+# Paths
+data_dir: "/data/ephemeral/home/upstageailab-cv-classification-cv_5/data"

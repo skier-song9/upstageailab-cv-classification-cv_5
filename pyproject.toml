@@ -22,11 +22,14 @@ dependencies = [
     "matplotlib",
     "scipy",
     "imgaug",
-    "albumentations",
+    "albumentations==2.0.8",
     "pyyaml",
     "notebook",
     "ipykernel",
     "ipython",
     "augraphy>=8.2.6",
-    "nbconvert==7.12.0"
+    "nbconvert==7.12.0",
+    "wandb>=0.20.1",
+    "pywavelets>=1.8.0",
+    "seaborn>=0.13.2",
 ]

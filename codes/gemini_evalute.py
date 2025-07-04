@@ -7,6 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score, confusion_matrix
 import wandb
+import matplotlib.image as mpimg
 
 def tta_predict(model, dataset, tta_transform, device):
     model.eval()
@@ -71,3 +72,67 @@ def do_validation(df, model, data, transform_func, cfg, run=None, show=False, sa
     else:
         plt.clf()
     return val_preds, val_f1
+
+def save_validation_images(val_df, val_preds, cfg, images_per_row=5, show=False):
+    # 1. 예측값과 실제값을 포함하는 새로운 DataFrame 생성
+    # val_df의 'ID'와 'target'을 그대로 사용하고, 'predicted_target' 컬럼 추가
+    results_df = val_df[['ID', 'target']].copy()
+    results_df['predicted_target'] = val_preds
+    # 2. 예측이 틀린 데이터 필터링
+    # 'target' 컬럼과 'predicted_target' 컬럼이 다른 경우를 찾습니다.
+    misclassified_df = results_df[results_df['target'] != results_df['predicted_target']].copy()
+    if misclassified_df.empty:
+        print("No misclassified images to visualize.")
+        return None
+
+    # 3. 가독성을 위해 클래스 이름 추가 (선택 사항)
+    # 실제 클래스 이름과 예측된 클래스 이름을 매핑하여 컬럼 추가
+    # 메타데이터 로드
+    meta = pd.read_csv(os.path.join(cfg.data_dir, 'meta.csv'))
+    meta_dict = zip(meta['target'], meta['class_name'])
+    meta_dict = dict(meta_dict)
+    misclassified_df['actual_class_name'] = misclassified_df['target'].map(meta_dict)
+    misclassified_df['predicted_class_name'] = misclassified_df['predicted_target'].map(meta_dict)
+
+    # 시각화 및 결과 저장.
+    # 1. target으로 오름차순 정렬
+    misclassified_df = misclassified_df.sort_values(by='target', ascending=True)
+
+    # 2. 시각화
+    num_images = len(misclassified_df)
+    num_rows = (num_images + images_per_row - 1) // images_per_row # 올림 계산
+    
+    plt.figure(figsize=(6 * images_per_row, 6 * num_rows), dpi=200) # 각 이미지 당 3x3 인치 할당
+
+    for i, row in tqdm(enumerate(misclassified_df.itertuples()), desc="Visualizing Wrong Validation Results..."):
+        # 이미지 파일 경로 구성
+        # 만약 이미지가 data_dir/images/ 에 있다면, os.path.join(data_dir, 'images', row.ID)
+        image_path = os.path.join(cfg.data_dir, 'train', row.ID)
+
+        if not os.path.exists(image_path):
+            print(f"Warning: Image file not found at {image_path}. Skipping.")
+            continue
+
+        try:
+            img = mpimg.imread(image_path)
+        except Exception as e:
+            print(f"Error loading image {image_path}: {e}. Skipping.")
+            continue
+
+        ax = plt.subplot(num_rows, images_per_row, i + 1)
+        ax.imshow(img)
+
+        # 타이틀 설정: A-{actual_class_name}_P-{predicted_class_name}
+        title = f"ID-{row.ID}\nA-{row.actual_class_name}\nP-{row.predicted_class_name}"
+        ax.set_title(title, fontsize=10) # 폰트 크기 조정
+
+        ax.axis('off') # 축 정보 숨기기
+
+    plt.tight_layout() # 서브플롯 간격 자동 조절
+    plt.suptitle("Misclassified Images", fontsize=16, y=1.02) # 전체 제목
+    if os.path.exists(cfg.submission_dir):
+        val_wrong_img_dir = os.path.join(cfg.submission_dir, 'val_img')
+        os.makedirs(val_wrong_img_dir, exist_ok=True)
+        plt.savefig(os.path.join(val_wrong_img_dir,"validation_wrong_images.png"))
+    if show:
+        plt.show()

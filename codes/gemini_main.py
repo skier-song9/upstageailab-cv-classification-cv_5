@@ -158,7 +158,7 @@ if __name__ == "__main__":
             raise ValueError("Failed to train model...")
 
         ### Save Model
-        trainer.save_experiments(savepath=os.path.join(cfg.submission_dir, f'{next_run_name}.pht'))
+        trainer.save_experiments(savepath=os.path.join(cfg.submission_dir, f'{next_run_name}.pth'))
         ## 학습 결과 시각화 저장.
         trainer.plot_loss(
             show=False,

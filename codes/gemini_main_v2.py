@@ -88,6 +88,7 @@ if __name__ == "__main__":
             f"opt_{cfg.optimizer_name}-"
             f"sch_{cfg.scheduler_name}-"
             f"img{cfg.image_size}-"
+            f"es{cfg.patience}-"
             f"{aug_str_parts}-"  # 개선된 증강 문자열
             f"clsaug_{1 if cfg.class_imbalance else 0}-"
             f"vTTA_{1 if cfg.val_TTA else 0}-"

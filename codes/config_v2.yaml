@@ -73,7 +73,7 @@ dynamic_augmentation:
   # color_jitter: True
 val_TTA: True # Validation 시, Test Time Augmentation 사용 여부
 test_TTA: True # Inference 시, Test Time Augmentation 사용 여부
-tta_dropout: True # inference 시에도 model.train() 모드를 사용해 dropout을 활성화하는 방법
+tta_dropout: False # inference 시에도 model.train() 모드를 사용해 dropout을 활성화하는 방법
 mixed_precision: True # Mixed Precision 학습 사용 여부 > 사용하면 더 큰 batch_size 학습 가능
 
 # Model hyperparameters

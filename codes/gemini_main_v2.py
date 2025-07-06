@@ -32,10 +32,10 @@ import argparse
 #📢 project_root 설정 필수
 project_root = '/data/ephemeral/home/upstageailab-cv-classification-cv_5'
 sys.path.append(project_root)
-from codes.practice.gemini_utils_v2 import *
-from codes.practice.gemini_train_v2 import *
-from codes.practice.gemini_augmentation_v2 import *
-from codes.practice.gemini_evalute_v2 import *
+from codes.gemini_utils_v2 import *
+from codes.gemini_train_v2 import *
+from codes.gemini_augmentation_v2 import *
+from codes.gemini_evalute_v2 import *
 
 if __name__ == "__main__":
     try:
@@ -229,7 +229,7 @@ if __name__ == "__main__":
             test_dataset_raw = ImageDataset(test_df, os.path.join(cfg.data_dir, "test"), transform=raw_transform)
             test_loader_raw = DataLoader(test_dataset_raw, batch_size=cfg.batch_size, shuffle=False, num_workers=4, pin_memory=True)
             print("Running TTA on test set...")
-            test_preds = tta_predict(model, test_dataset_raw, test_tta_transform, device, flag='test')
+            test_preds = tta_predict(model, test_dataset_raw, test_tta_transform, device, cfg, flag='test')
         else:
             test_dataset = ImageDataset(test_df, os.path.join(cfg.data_dir, "test"), transform=val_transform)
             test_loader = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=4, pin_memory=True)

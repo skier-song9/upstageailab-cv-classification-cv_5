@@ -10,8 +10,11 @@ import wandb
 import albumentations as A
 import matplotlib.image as mpimg
 
-def tta_predict(model, dataset, tta_transform, device, flag='val'):
-    model.eval()
+def tta_predict(model, dataset, tta_transform, device, cfg, flag='val'):
+    if cfg.tta_dropout:
+        model.train()
+    else:
+        model.eval()
     predictions = []
     with torch.no_grad():
         if flag=='val':

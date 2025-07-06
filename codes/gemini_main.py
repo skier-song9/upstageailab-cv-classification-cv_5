@@ -180,6 +180,11 @@ if __name__ == "__main__":
         )
         print("📢 Validation F1-score:",val_f1)
 
+        # Save incorrect validation results
+        try:
+            save_validation_images(val_df, val_preds, cfg, images_per_row=5, show=False)
+        except:
+            print("⚠️Saving incorrect validation results Failed...")
 
         # Inference
         test_df = pd.read_csv(os.path.join(cfg.data_dir, "sample_submission.csv"))

@@ -73,15 +73,16 @@ dynamic_augmentation:
   # color_jitter: True
 val_TTA: True # Validation 시, Test Time Augmentation 사용 여부
 test_TTA: True # Inference 시, Test Time Augmentation 사용 여부
+tta_dropout: False # inference 시에도 model.train() 모드를 사용해 dropout을 활성화하는 방법
 mixed_precision: True # Mixed Precision 학습 사용 여부 > 사용하면 더 큰 batch_size 학습 가능
 
 # Model hyperparameters
 timm:
   activation: None # ReLU, LeakyReLU, ELU, SELU, GELU, Tanh, PReLU, SiLU
   # None 입력시 timm 모델의 기본 activation 사용
-  head: # head가 있는 모델인 경우 dropout 설정
-    drop: 0.3
+  # dropout과 같이 추가적인 옵션이 존재하는 경우, key: value 형태로 전달.
 custom_layer: # custom classifier head를 사용하고 싶은 경우 설정. None일 때 custom head 사용 안 함. 
+  # head_type: "simple_dropout"
   # drop: 0.2
   # activation: 'GELU'
 

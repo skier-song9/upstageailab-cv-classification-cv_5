@@ -76,21 +76,34 @@ def get_activation(activation_option):
 class TimmWrapper(nn.Module):
     def __init__(self, cfg):
         super().__init__()
+        self.cfg = cfg
+        additional_options = {} # dropout 관련 옵션이 있는 모델의 경우
+        for key in self.cfg.timm.keys():
+            if key != "activation":
+                additional_options[key] = self.cfg.timm[key]
         self.backbone = timm.create_model(
             model_name=cfg.model_name,
             pretrained=cfg.pretrained,
             num_classes=0, global_pool='avg',
-            act_layer=get_activation(cfg.timm['activation'])
+            act_layer=get_activation(cfg.timm['activation']),
+            **additional_options
         )
         self.dropout = nn.Dropout(p=cfg.custom_layer['drop'])
         self.activation = get_activation(cfg.custom_layer['activation'])()
-        self.classifier = nn.Sequential(
-            nn.Linear(self.backbone.num_features, 1024),
-            nn.BatchNorm1d(1024),
-            self.activation,
-            self.dropout,
-            nn.Linear(1024, 17)
-        )
+        if cfg.custom_layer['head_type'] == "simple_dropout":
+            self.classifier = nn.Sequential(
+                self.dropout,
+                nn.Linear(self.backbone.num_features, 17)
+            )
+        else :
+            self.classifier = nn.Sequential(
+                nn.Linear(self.backbone.num_features, 512),
+                nn.BatchNorm1d(512),
+                self.activation,
+                self.dropout,
+                nn.Linear(512, 17)
+            )
+        
         def weight_init(m):
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 if cfg.timm['activation'] in ['Tanh']:
@@ -127,17 +140,17 @@ def get_timm_model(cfg):
         return TimmWrapper(cfg).to(cfg.device)
 
     else: # timm 모델 구조 사용
+        additional_options = {} # dropout 관련 옵션이 있는 모델의 경우
+        for key in cfg.timm.keys():
+            if key != "activation":
+                additional_options[key] = cfg.timm[key]
         model = timm.create_model(
-            cfg.model_name,
+            model_name=cfg.model_name,
             pretrained=cfg.pretrained,
             num_classes=17,
-            act_layer=get_activation(cfg.timm['activation'])
+            act_layer=get_activation(cfg.timm['activation']),
+            **additional_options
         )
-        # 모델에 따라 'head'가 있는 것도 있고 없는 것도 있다.
-        # 'head'가 있다면 dropout 비율을 설정할 수 있다.
-        if cfg.timm.get('head', False):
-            if cfg.timm['head'].get('drop'):
-                model.head.drop.p = cfg.timm['head']['drop'] # classifier head의 dropout 설정
         return model.to(cfg.device)
 
 def get_criterion(cfg):

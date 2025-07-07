@@ -10,7 +10,8 @@ from sklearn.metrics import f1_score
 
 import sys
 sys.path.append(
-	"/data/ephemeral/home/upstageailab-cv-classification-cv_5/codes/practice"
+	# 자신의 환경에 맞는 경로 설정
+	"/data/ephemeral/home/upstageailab-cv-classification-cv_5/codes"
 )
 
 from gemini_augmentation_v2 import get_augmentation
@@ -140,6 +141,11 @@ class TrainModule():
 		return epoch_loss, epoch_acc, epoch_f1  # classification		
 	
 	def validation_step(self):
+		if self.cfg.tta_dropout: 
+			# inference 시에도 dropout을 유지하여 마치 앙상블하는 것 같은 효과를 준다.
+			self.model.train()
+		else:
+			self.model.eval()  # 평가 모드
 		self.model.eval()  # 평가 모드
 		val_loss = 0
 		correct = 0 # classification

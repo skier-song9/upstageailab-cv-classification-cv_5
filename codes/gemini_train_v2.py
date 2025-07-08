@@ -23,10 +23,11 @@ class EarlyStopping:
         self.restore_best_weights = restore_best_weights
         self.best_model_state_dict = None
         self.best_loss = None
+        self.best_loss_epoch = 0
         self.counter = 0
         self.status = ""
 
-    def __call__(self, model, val_loss):
+    def __call__(self, model, val_loss, epoch=0):
         if self.best_loss is None:
             #현재의 모델로 self.best_loss, self.best_model_state_dict 업데이트
             self.best_loss = val_loss
@@ -35,6 +36,7 @@ class EarlyStopping:
 			#val_loss가 best_loss보다 좋을 때 > self.best_loss와 self.best_model 업데이트
             self.best_model_state_dict = copy.deepcopy(model.state_dict())
             self.best_loss = val_loss
+            self.best_loss_epoch = epoch
             self.counter = 0
             self.status = f"Improvement found, counter reset to {self.counter}"
         else:
@@ -88,7 +90,8 @@ class TrainModule():
 		self.run = run
 		# Mixed Precision > 'cuda' device 에서만 가능하다.
 		self.scaler = torch.amp.GradScaler(enabled=self.cfg.mixed_precision) # 기본적으로 FP16에 최적화되어 있습니다.
-		
+		self.epoch_counter = 0
+
 	def training_step(self):
 		# set train mode
 		self.model.train()
@@ -118,8 +121,10 @@ class TrainModule():
 			# 	loss.backward() # backward pass
 			# 	self.optimizer.step() # 가중치 업데이트
 
-			if self.cfg.scheduler_name == "OneCycleLR":
+			if self.cfg.scheduler_name in ["OneCycleLR"]:
 				self.scheduler.step()
+			elif self.cfg.scheduler_name in ["CosineAnnealingWarmupRestarts"]:
+				self.scheduler.step(self.epoch_counter)
 			
 			running_loss += loss.item() * train_y.size(0) # train_loss 
 			_, predicted = torch.max(outputs, 1) # 가장 확률 높은 클래스 예측 # classification
@@ -199,15 +204,16 @@ class TrainModule():
 		# reset loss list for plots
 		self.train_losses_for_plot, self.val_losses_for_plot = [], []
 		self.train_acc_for_plot, self.val_acc_for_plot = [], []
-		epoch_counter = 0
+		self.train_f1_for_plot, self.val_f1_for_plot = [], []
+		self.epoch_counter = 0
 		epoch_timer = []
 		done = False
 		
 		pbar = tqdm(total=self.cfg.epochs)
-		while not done and epoch_counter<self.cfg.epochs:
-			self.update_transform(epoch_counter) # epoch에 따라 증강 기법을 바꾼다.
+		while not done and self.epoch_counter<=self.cfg.epochs:
+			self.update_transform(self.epoch_counter) # epoch에 따라 증강 기법을 바꾼다.
 			st = time.time()
-			epoch_counter += 1
+			self.epoch_counter += 1
 			
 			# train
 			# train_loss = self.training_step() # regression
@@ -220,17 +226,19 @@ class TrainModule():
 			# scheduler의 종류에 따라 val_loss를 전달하거나 그냥 step() 호출.
 			if self.cfg.scheduler_name == "OneCycleLR":
 				pass
-			elif self.cfg.scheduler_name == "ReduceLROnPlateau":
-				self.scheduler.step(val_loss)
-			else:
+			elif self.cfg.scheduler_name != "ReduceLROnPlateau":
 				self.scheduler.step()
 
-			# validation
-			# val_loss = self.validation_step() # regression
-			val_loss, val_acc, val_f1 = self.validation_step()  # classification
-			self.val_losses_for_plot.append(val_loss)
-			self.val_acc_for_plot.append(val_acc) # classification
-			self.val_f1_for_plot.append(val_f1) # classification
+			if self.valid_loader is not None:
+				# validation
+				# val_loss = self.validation_step() # regression
+				val_loss, val_acc, val_f1 = self.validation_step()  # classification
+				self.val_losses_for_plot.append(val_loss)
+				self.val_acc_for_plot.append(val_acc) # classification
+				self.val_f1_for_plot.append(val_f1) # classification
+
+				if self.cfg.scheduler_name == "ReduceLROnPlateau":
+					self.scheduler.step(val_loss)
 
 			epoch_timer.append(time.time() - st)
 			pbar.update(1)
@@ -241,11 +249,12 @@ class TrainModule():
 					'train_loss': train_loss,
 					'train_accuracy': train_acc,
 					'train_f1': train_f1,
-					'val_loss': val_loss,
-					'val_accuracy': val_acc,
-					'val_f1': val_f1, 
 					'learning_rate': self.optimizer.param_groups[0]['lr'],
 				}
+				if self.valid_loader is not None:
+					epoch_log['val_loss'] = val_loss
+					epoch_log['val_accuracy'] = val_acc
+					epoch_log['val_f1'] = val_f1
 
 				# logging weights & gradients
 				all_grads = []
@@ -260,15 +269,17 @@ class TrainModule():
 				if all_weights:
 					epoch_log['weights/all'] = wandb.Histogram(torch.cat(all_weights))
 				
-				self.run.log(epoch_log, step=epoch_counter) # wandb logging
-			if epoch_counter == 1 or epoch_counter % self.verbose == 0:
+				self.run.log(epoch_log, step=self.epoch_counter) # wandb logging
+			if self.epoch_counter == 1 or self.epoch_counter % self.verbose == 0:
 				# self.verbose epoch마다 logging
 				mean_time_spent = np.mean(epoch_timer)
 				epoch_timer = [] # reset timer list
-				# print(f"Epoch {epoch_counter}/{self.cfg.epochs} [Time: {mean_time_spent:.2f}s], Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.8f}")
-				print(f"Epoch {epoch_counter}/{self.cfg.epochs} [Time: {mean_time_spent:.2f}s], Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.8f}\n Train ACC: {train_acc:.2f}%, Validation ACC: {val_acc:.2f}%\n Train F1: {train_f1:.4f}, Validation F1: {val_f1:.4f}") # classification
-
-			if self.es(self.model, val_loss):
+				# print(f"Epoch {self.epoch_counter}/{self.cfg.epochs} [Time: {mean_time_spent:.2f}s], Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.8f}")
+				if self.valid_loader is not None:
+					print(f"Epoch {self.epoch_counter}/{self.cfg.epochs} [Time: {mean_time_spent:.2f}s], Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.8f}\n Train ACC: {train_acc:.2f}%, Validation ACC: {val_acc:.2f}%\n Train F1: {train_f1:.4f}, Validation F1: {val_f1:.4f}") # classification
+				else:
+					print(f"Epoch {self.epoch_counter}/{self.cfg.epochs} [Time: {mean_time_spent:.2f}s], Train Loss: {train_loss:.4f} | Train ACC: {train_acc:.2f}% | Train F1: {train_f1:.4f}") # classification
+			if self.valid_loader is not None and self.es(self.model, val_loss, self.epoch_counter):
 				# early stopped 된 경우 if 문 안으로 들어온다.
 				done = True
 		# except Exception as e:

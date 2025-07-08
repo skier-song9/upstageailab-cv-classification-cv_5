@@ -1,5 +1,5 @@
 # Configuration for the training process
-model_name: 'swin_base_patch4_window12_384.ms_in1k' # timm model name
+model_name: 'resnet50.tv2_in1k' # timm model name
 pretrained: True # timm pretrained 가중치 사용 여부
 fine_tuning: "full" # fine-tuning 방법론
   # full : pretrained=True, pretrained가중치를 전부 재학습시킨다. 
@@ -8,21 +8,25 @@ fine_tuning: "full" # fine-tuning 방법론
   # scratch : pretrained=False, 모델 구조만 사용하고 모든 가중치를 처음부터 학습시킨다.
 
 # Loss Function
-criterion: 'CrossEntropyLoss'
-
+criterion: 'CrossEntropyLoss' # CrossEntropyLoss, FocalLoss, LabelSmoothingLoss
+class_weighting: False # class에 가중치를 두어 Loss 계산
+label_smooth: 0.0
 # Optimizer
 # optimizer name: SGD, RMSprop, Momentum, NAG, Adam, AdamW, NAdam, RAdam, Adafactor
 # reference : https://www.notion.so/skier-song9/Pytorch-9cfee0520ed6468a94b024ea35e48018?source=copy_link#217c8d3f60f58044beeac55596433dc6
 optimizer_name: 'AdamW'
 # optimizer_params:
-lr: 0.0001 # 1e-4
-weight_decay: 0.00001 # 1e-5
+lr: 0.1 # 1e-1
+weight_decay: 0.001 # 1e-3
 
 # Scheduler
-# scheduler_name : StepLR, ExponentialLR, CosineAnnealingLR, OneCycleLR, ReduceLROnPlateau
+# scheduler_name : StepLR, ExponentialLR, CosineAnnealingLR, OneCycleLR, ReduceLROnPlateau, CosineAnnealingWarmupRestarts
 # reference : https://www.notion.so/skier-song9/Pytorch-9cfee0520ed6468a94b024ea35e48018?source=copy_link#1d2c8d3f60f58026b71ad399ead029a9    
 scheduler_name: 'CosineAnnealingLR'
-# scheduler_params:
+scheduler_params:
+  T_max: 25
+  max_lr: 0.1 # 1e-2
+  min_lr: 0.0001 # 1e-4
 #   max_lr: 0.01 # for OneCycleLR
   # step_size: 50 # for StepLR
   # gamma: 0.1 # for StepLR, ExponentialLR
@@ -45,9 +49,10 @@ norm_mean: [0.5, 0.5, 0.5]
 norm_std: [0.5, 0.5, 0.5]
 
 # Techniques
+weighted_random_sampler: False
 class_imbalance: 
   aug_class: [1, 13, 14]
-  max_samples: 78
+  max_samples: 70
 online_augmentation: True
 augmentation: # normal augmentation : dynamic augmentation이 활성화되어 있으면 일반 augmentation은 자동으로 비활성화된다.
   eda: True
@@ -60,14 +65,14 @@ dynamic_augmentation:
   enabled: True
   policies:
     weak:
-      end_epoch: 5
-      augs: ['basic']
+      end_epoch: 40
+      augs: ['easiest', 'basic']
     middle:
-      end_epoch: 15
-      augs: ['middle']
+      end_epoch: 80
+      augs: ['stilleasy', 'middle']
     strong:
       end_epoch: 300
-      augs: ['aggressive','eda']
+      augs: ['aggressive']
   # you can add more augmentations here, e.g.,
   # random_crop: True
   # color_jitter: True
@@ -83,18 +88,19 @@ timm:
   # dropout과 같이 추가적인 옵션이 존재하는 경우, key: value 형태로 전달.
 custom_layer: # custom classifier head를 사용하고 싶은 경우 설정. None일 때 custom head 사용 안 함. 
   # head_type: "simple_dropout"
-  # drop: 0.2
+  # drop: 0.1
   # activation: 'GELU'
 
 # Training hyperparameters
-epochs: 10000 # max epoch
-patience: 20 # early stopping patience
-batch_size: 32 # image_size, model_size, GPU RAM 에 따라 OOM이 발생하지 않도록 설정.
+epochs: 1000 # max epoch
+patience: 5 # early stopping patience
+batch_size: 64 # image_size, model_size, GPU RAM 에 따라 OOM이 발생하지 않도록 설정.
 
 # W&B
 wandb:
   project: "upstage-img-clf"
-  log: False # log using wandb, if False then do not use wandb
+  log: True # log using wandb, if False then do not use wandb
 
 # Paths
 data_dir: "/data/ephemeral/home/upstageailab-cv-classification-cv_5/data"
+train_data: train0705a.csv

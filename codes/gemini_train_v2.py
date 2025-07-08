@@ -101,6 +101,9 @@ class TrainModule():
 		all_preds = []
 		all_targets = []
 		
+		# mixup 또는 cutmix 활성화 여부 확인
+		is_mixup_or_cutmix_enabled = (self.cfg.online_aug['mixup'] or self.cfg.online_aug['cutmix'])
+
 		for train_x, train_y in self.train_loader: # batch training
 			train_x, train_y = train_x.to(self.cfg.device), train_y.to(self.cfg.device)
 			
@@ -123,16 +126,23 @@ class TrainModule():
 
 			if self.cfg.scheduler_name in ["OneCycleLR"]:
 				self.scheduler.step()
-			elif self.cfg.scheduler_name in ["CosineAnnealingWarmupRestarts"]:
-				self.scheduler.step(self.epoch_counter)
 			
 			running_loss += loss.item() * train_y.size(0) # train_loss 
 			_, predicted = torch.max(outputs, 1) # 가장 확률 높은 클래스 예측 # classification
-			correct += (predicted == train_y).sum().item() # classification
-			total += train_y.size(0) 
+			
+			# mixup/cutmix 활성화 여부에 따라 train_y 처리 분기
+			if is_mixup_or_cutmix_enabled:
+				# mixup/cutmix가 활성화된 경우, train_y는 소프트 레이블이므로 하드 레이블로 변환
+				hard_train_y_for_metrics = torch.argmax(train_y, dim=1)
+			else:
+				# mixup/cutmix가 비활성화된 경우, train_y는 이미 하드 레이블 (정수)
+				hard_train_y_for_metrics = train_y
+			
+			correct += (predicted == hard_train_y_for_metrics).sum().item() # classification
+			total += hard_train_y_for_metrics.size(0) 
 
 			all_preds.extend(predicted.cpu().numpy())
-			all_targets.extend(train_y.cpu().numpy())
+			all_targets.extend(hard_train_y_for_metrics.cpu().numpy())
 
 			# **********************************************
 			# VRAM 부족 시: 각 배치 처리 후 GPU 캐시 비우기
@@ -223,22 +233,26 @@ class TrainModule():
 			self.train_acc_for_plot.append(train_acc) # classification
 			self.train_f1_for_plot.append(train_f1) # classification
 
-			# scheduler의 종류에 따라 val_loss를 전달하거나 그냥 step() 호출.
-			if self.cfg.scheduler_name == "OneCycleLR":
-				pass
-			elif self.cfg.scheduler_name != "ReduceLROnPlateau":
-				self.scheduler.step()
-
+			# validation (scheduler step 전에 수행)
 			if self.valid_loader is not None:
-				# validation
-				# val_loss = self.validation_step() # regression
-				val_loss, val_acc, val_f1 = self.validation_step()  # classification
+				val_loss, val_acc, val_f1 = self.validation_step()
 				self.val_losses_for_plot.append(val_loss)
-				self.val_acc_for_plot.append(val_acc) # classification
-				self.val_f1_for_plot.append(val_f1) # classification
+				self.val_acc_for_plot.append(val_acc)
+				self.val_f1_for_plot.append(val_f1)
+			else:
+				# validation loader가 없으면 val_loss를 임의의 값으로 설정 (early stopping 방지용)
+				val_loss, val_acc, val_f1 = 0, 0, 0
 
-				if self.cfg.scheduler_name == "ReduceLROnPlateau":
-					self.scheduler.step(val_loss)
+			# Scheduler step (호출 로직 통합 및 수정)
+			if self.cfg.scheduler_name == 'ReduceLROnPlateau':
+				self.scheduler.step(val_loss)
+			elif self.cfg.scheduler_name == 'CosineAnnealingWarmupRestarts':
+				self.scheduler.step(epoch=self.epoch_counter)
+			elif self.cfg.scheduler_name != 'OneCycleLR':
+				# CosineAnnealingLR, CosineAnnealingWarmupRestarts 등
+				# 대부분의 에포크 기반 스케줄러는 인자 없이 호출합니다.
+				# OneCycleLR은 training_step에서 배치마다 호출되므로 제외합니다.
+				self.scheduler.step()
 
 			epoch_timer.append(time.time() - st)
 			pbar.update(1)

@@ -310,7 +310,9 @@ def get_scheduler(optimizer, cfg, steps_per_epoch):
         'CosineAnnealingLR': lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.scheduler_params['T_max'], eta_min=cfg.scheduler_params['min_lr']),
         'OneCycleLR': lr_scheduler.OneCycleLR(optimizer, max_lr=cfg.scheduler_params['max_lr'], steps_per_epoch=steps_per_epoch, epochs=cfg.epochs),
         'ReduceLROnPlateau': lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=cfg.patience-5, min_lr=cfg.scheduler_params['min_lr']),
-        'CosineAnnealingWarmupRestarts': CosineAnnealingWarmupRestarts(optimizer, first_cycle_steps=cfg.scheduler_params['T_max'], cycle_mult=1.0, max_lr=cfg.scheduler_params['max_lr'], min_lr=cfg.scheduler_params['min_lr'], warmup_steps=3, gamma=0.9)
+        'CosineAnnealingWarmupRestarts': CosineAnnealingWarmupRestarts(optimizer, first_cycle_steps=cfg.scheduler_params['T_max'], cycle_mult=1.0, max_lr=cfg.scheduler_params['max_lr'], min_lr=cfg.scheduler_params['min_lr'], warmup_steps=cfg.scheduler_params['warmup'], gamma=cfg.scheduler_params['gamma'])
+        # torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=cfg.scheduler_params['T_max'], T_mult=1, eta_min=cfg.scheduler_params['min_lr'], last_epoch=-1)
+        # CosineAnnealingWarmupRestarts(optimizer, first_cycle_steps=cfg.scheduler_params['T_max'], cycle_mult=1.0, max_lr=cfg.scheduler_params['max_lr'], min_lr=cfg.scheduler_params['min_lr'], warmup_steps=cfg.scheduler_params['warmup'], gamma=cfg.scheduler_params['gamma'])
     }
     return SCHEDULERS[cfg.scheduler_name]
 

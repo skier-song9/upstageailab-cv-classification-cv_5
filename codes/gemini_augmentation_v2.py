@@ -2,6 +2,8 @@ import cv2
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import os
+import torch
+import numpy as np
 
 AUG = {
     'eda': A.Compose([
@@ -9,17 +11,21 @@ AUG = {
         A.ColorJitter(brightness=0.1, contrast=0.07, saturation=0.07, hue=0.07, p=1.0),
         # 공간 변형에 대한 증강
         A.Affine(
-            scale=(0.85, 1.15),
+            # scale=(0.85, 1.15),
             translate_percent=(-0.05,0.05),
             rotate=(-20,30),
             fill=(255,255,255),
-            shear=(-5, 5),
+            # shear=(-5, 5),
             p=1.0
         ),
         # x,y 좌표 반전 
-        A.HorizontalFlip(p=0.6),
-        A.VerticalFlip(p=0.6),
-        A.Transpose(p=0.6),    
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),
         # Blur & Noise
         A.OneOf([
             A.GaussianBlur(sigma_limit=(0.5, 2.5), p=1.0),
@@ -35,13 +41,17 @@ AUG = {
             translate_percent=(-0.05,0.05),
             rotate=(-20,30),
             fill=(255,255,255),
-            shear=(-5, 5),
+            # shear=(-5, 5),
             p=0.9
         ),
         # x,y 좌표 반전 
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),    
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),    
         A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=1),
         A.RandomBrightnessContrast(p=1),
     ]),
@@ -53,13 +63,17 @@ AUG = {
             translate_percent=(-0.05,0.05),
             rotate=(-20,30),
             fill=(255,255,255),
-            shear=(-5, 5),
+            # shear=(-5, 5),
             p=0.9
         ),
         # x,y 좌표 반전 
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),    
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),   
         A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=1),
         A.RandomBrightnessContrast(p=1),
     ]),
@@ -69,22 +83,32 @@ AUG = {
             fill=(255,255,255),
             p=0.8, # 50% 확률로 적용
         ),
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),   
+        # x,y 좌표 반전 
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),   
     ]),
     'stilleasy': A.Compose([
         A.Affine(
-            scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # X, Y 축 개별 스케일
-            translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}, # X, Y 축 개별 이동
+            # scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # X, Y 축 개별 스케일
+            translate_percent=(-0.15, 0.15), # X, Y 축 개별 이동
             rotate=(-15, 20), # 회전 각도
-            shear=(-10, 10),  # 전단 변환 (이미지를 기울임)
+            # shear=(-10, 10),  # 전단 변환 (이미지를 기울임)
             fill=(255,255,255), # 이미지 외부 = 흰색으로 채우기
-            p=0.8, # 50% 확률로 적용
+            p=1.0, # 50% 확률로 적용
         ),
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),   
+        # x,y 좌표 반전 
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8), 
     ]),
     'basic': A.Compose([ ### 색조/밝기/대비 변화를 최소화하고 기하학전 변환에 초점을 둔 약한 증강. 노이즈/블러도 없음.
         # 1. 픽셀 값 기반 변환 (이미지 자체의 픽셀 값에 영향을 줌)
@@ -110,13 +134,18 @@ AUG = {
             scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # X, Y 축 개별 스케일
             translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}, # X, Y 축 개별 이동
             rotate=(-15, 20), # 회전 각도
-            shear=(-10, 10),  # 전단 변환 (이미지를 기울임)
+            # shear=(-10, 10),  # 전단 변환 (이미지를 기울임)
             p=0.5, # 50% 확률로 적용
             fill=(255,255,255) # 이미지 외부 = 흰색으로 채우기
         ),
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),            
+        # x,y 좌표 반전 
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),          
     ]),
     'middle': A.Compose([ # 노이즈/블러 + 기하학적 변환에 초점을 둔 중간 난이도의 변환
         
@@ -131,8 +160,8 @@ AUG = {
         # OneOf로 묶거나 각자의 확률을 낮춰 과도한 왜곡을 방지합니다.
         # 여기서는 문서의 "찌그러짐/왜곡"을 시뮬레이션하기 위해 OneOf로 묶는 것이 효과적입니다.
         A.OneOf([
-            # 문서 원근 변환 (0.05~0.1 스케일은 적절)
-            A.Perspective(scale=(0.05, 0.1), p=1.0),
+            # 문서 원근 변환 > 아주 미세하게만 변화
+            A.Perspective(scale=(0.02, 0.04), fill=(255,255,255), p=1.0), 
             # 그리드 왜곡 (num_steps=5, distort_limit=0.1 적절)
             A.GridDistortion(num_steps=5, distort_limit=0.2, p=1.0),
         ], p=0.3), # 이 세 가지 강한 왜곡 중 하나를 30% 확률로 적용 (개별 p값이 1.0이므로 OneOf의 p가 중요)
@@ -142,17 +171,22 @@ AUG = {
         # 기본 기하학적 변환 (Shift, Scale, Rotate)
         # 문서의 경우 회전 제한이 중요 (원본에서 min(config.rotation_limit, 15)로 제한)
         A.Affine(
-            scale=(0.8, 1.2),
-            translate_percent=(-0.0625, 0.0625),
+            # scale=(0.8, 1.2),
+            translate_percent=(-0.25, 0.25),
             rotate=(-120, 120), # 회전 각도
-            shear=(-5, 5),  # 전단 변환 (이미지를 기울임)
+            # shear=(-5, 5),  # 전단 변환 (이미지를 기울임)
             p=1.0, 
             fill=(255,255,255) # 이미지 외부 = 흰색으로 채우기
         ),
 
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5)
+        # x,y 좌표 반전 
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),
     ]),
     'aggressive': A.Compose([
         # 정보 가리기 및 혼합 (Occlusion & Mixing)
@@ -177,9 +211,14 @@ AUG = {
             ),
             A.Perspective(scale=(0.05, 0.1),fill=(255,255,255),p=1.0),
         ], p=0.9),
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),
+        # x,y 좌표 반전 
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),
         # 노이즈 효과 (둘 중 하나만 적용, 문서 품질 저하를 시뮬레이션)
         A.OneOf([
             A.GaussNoise(std_range=(0.01, 0.3), p=1.0), 
@@ -387,3 +426,47 @@ def delete_offline_augmented_images(cfg, augmented_ids):
             print("Wrong filename:", file_path)
     print(_,"개 이미지 제거")
 
+def mixup_collate_fn(batch, num_classes=17, alpha=0.4):
+    images, labels = zip(*batch)
+    images = torch.stack(images)          # [B, C, H, W] - 배치 내 이미지들을 스택하여 텐서로 만듭니다.
+    labels = torch.tensor(labels)         # [B] - 배치 내 라벨들을 텐서로 만듭니다.
+
+    lam = np.random.beta(alpha, alpha) # 람다(lam) 값을 베타 분포에서 샘플링합니다. Mixup의 핵심 가중치입니다.
+    batch_size = images.size(0)        # 현재 배치의 크기를 가져옵니다.
+    index = torch.randperm(batch_size) # 배치를 섞기 위한 무작위 인덱스를 생성합니다.
+
+    mixed_images = lam * images + (1 - lam) * images[index] # 원본 이미지와 섞인 이미지를 람다 값에 따라 혼합합니다.
+
+    labels_one_hot = torch.nn.functional.one_hot(labels, num_classes=num_classes).float() # 라벨을 원-핫 인코딩 형식으로 변환합니다.
+    mixed_labels = lam * labels_one_hot + (1 - lam) * labels_one_hot[index] # 원-핫 인코딩된 라벨과 섞인 라벨을 람다 값에 따라 혼합합니다.
+    
+    return mixed_images, mixed_labels # 혼합된 이미지와 혼합된 라벨을 반환합니다.
+
+def cutmix_collate_fn(batch, num_classes=17, alpha=1.0):
+    images, labels = zip(*batch)
+    images = torch.stack(images)
+    labels = torch.tensor(labels)
+
+    lam = np.random.beta(alpha, alpha)
+    batch_size, _, H, W = images.size()
+    index = torch.randperm(batch_size)
+
+    cut_rat = np.sqrt(1. - lam)
+    cut_w = int(W * cut_rat)
+    cut_h = int(H * cut_rat)
+
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
+
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bby1 = np.clip(cy - cut_h // 2, 0, H)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
+    bby2 = np.clip(cy + cut_h // 2, 0, H)
+
+    images[:, :, bby1:bby2, bbx1:bbx2] = images[index, :, bby1:bby2, bbx1:bbx2]
+    lam_adjusted = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (W * H))
+
+    labels_one_hot = torch.nn.functional.one_hot(labels, num_classes=num_classes).float()
+    mixed_labels = lam_adjusted * labels_one_hot + (1 - lam_adjusted) * labels_one_hot[index]
+
+    return images, mixed_labels

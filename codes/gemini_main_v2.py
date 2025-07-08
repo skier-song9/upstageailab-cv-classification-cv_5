@@ -37,6 +37,87 @@ from codes.gemini_train_v2 import *
 from codes.gemini_augmentation_v2 import *
 from codes.gemini_evalute_v2 import *
 
+def run_training_cycle(train_df, val_df, cfg, run, train_transforms, val_transform):
+    # augmented_ids, val_augmented_ids = [], []
+    val_augmented_ids = []
+    # # 클래스 불균형 해소를 위한 이미지 offline 증강
+    # if hasattr(cfg, 'class_imbalance') and cfg.class_imbalance:
+    #     new_augmented_ids, augmented_labels = augment_class_imbalance(cfg, train_df)
+    #     augmented_ids.extend(new_augmented_ids)
+    #     imb_aug_df = pd.DataFrame({"ID": new_augmented_ids, "target": augmented_labels})
+    #     train_df = pd.concat([train_df, imb_aug_df], ignore_index=True).reset_index(drop=True)
+
+    # validation 데이터를 offline으로 eda 증강을 적용
+    if val_df is not None and cfg.val_TTA:
+        new_val_augmented_ids, augmented_labels = augment_validation(cfg, val_df)
+        val_augmented_ids.extend(new_val_augmented_ids)
+        val_aug_df = pd.DataFrame({"ID": new_val_augmented_ids, "target": augmented_labels})
+        val_df = pd.concat([val_df, val_aug_df], ignore_index=True).reset_index(drop=True)
+
+    # Sampler 설정
+    sampler = None
+    shuffle = True
+    if cfg.weighted_random_sampler:
+        targets = train_df['target'].values
+        class_counts = np.bincount(targets)
+        class_weights = 1. / class_counts
+        weights = class_weights[targets]
+        g = get_generator(cfg)
+        sampler = WeightedRandomSampler(weights, len(weights), generator=g)
+        shuffle = False
+
+    # Dataset 생성
+    if cfg.online_augmentation:
+        train_dataset = ImageDataset(train_df, os.path.join(cfg.data_dir, "train"), transform=train_transforms[0])
+    else:
+        datasets = [ImageDataset(train_df, os.path.join(cfg.data_dir, "train"), transform=t) for t in train_transforms]
+        train_dataset = ConcatDataset(datasets)
+    
+    val_loader = None
+    if val_df is not None:
+        val_dataset = ImageDataset(val_df, os.path.join(cfg.data_dir, "train"), transform=val_transform)
+        val_loader = DataLoader(val_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
+
+    if cfg.online_aug['mixup']:
+        train_collate = lambda batch: mixup_collate_fn(batch, num_classes=17, alpha=0.4)
+    elif cfg.online_aug['cutmix']:
+        train_collate = lambda batch: cutmix_collate_fn(batch, num_classes=17, alpha=0.4)
+    else:
+        train_collate = None
+    # DataLoader 생성
+    train_loader = DataLoader(train_dataset, batch_size=cfg.batch_size, sampler=sampler, shuffle=shuffle, num_workers=8, pin_memory=True, collate_fn=train_collate)
+
+    # TrainModule 정의
+    model = get_timm_model(cfg)
+    class_weights = None
+    if hasattr(cfg, 'class_weighting') and cfg.class_weighting:
+        class_counts = train_df['target'].value_counts().sort_index()
+        weights = 1.0 / class_counts
+        class_weights = torch.tensor(weights.values, dtype=torch.float32).to(cfg.device)
+    
+    criterion = get_criterion(cfg, class_weights=class_weights)
+    optimizer = get_optimizer(model, cfg)
+    scheduler = get_scheduler(optimizer, cfg, steps_per_epoch=len(train_loader))
+
+    trainer = TrainModule(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        train_loader=train_loader,
+        valid_loader=val_loader,
+        cfg=cfg,
+        verbose=1,
+        run=run
+    )
+
+    # 학습
+    train_result = trainer.training_loop()
+    if not train_result:
+        raise ValueError("Failed to train model...")
+
+    return trainer, val_augmented_ids, val_df, val_loader
+
 if __name__ == "__main__":
     try:
         # python 파일 실행할 때 config.yaml 파일 이름을 입력받아서 설정 파일을 지정한다.
@@ -47,7 +128,13 @@ if __name__ == "__main__":
             default='config.yaml', # 기본값 설정
             help='Name of the configuration YAML file (e.g., config.yaml, experiment_A.yaml)'
         )
-        
+        parser.add_argument(
+            '--config2', # 2-stage 모델을 위한 config
+            type=str,
+            default='config2.yaml', # 기본값 설정
+            help='Name of the configuration YAML file (e.g., config.yaml, experiment_A.yaml)'
+        )
+
         args = parser.parse_args()
 
         # Yaml 파일 읽기
@@ -67,7 +154,6 @@ if __name__ == "__main__":
         cfg.device = device
         CURRENT_TIME = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%y%m%d%H%M")
         print(f"⌚ 실험 시간: {CURRENT_TIME}")
-
 
         # W&B 설정
         # 증강 기법 문자열 생성 로직 개선
@@ -91,6 +177,7 @@ if __name__ == "__main__":
             f"es{cfg.patience}-"
             f"{aug_str_parts}-"  # 개선된 증강 문자열
             f"cv{cfg.n_folds}-"
+            f"2stage_{1 if cfg.two_stage else 0}-" # 2-stage 모델 사용 여부
             f"clsaug_{1 if cfg.class_imbalance else 0}-"
             f"vTTA_{1 if cfg.val_TTA else 0}-"
             f"tTTA_{1 if cfg.test_TTA else 0}-"
@@ -118,102 +205,32 @@ if __name__ == "__main__":
 
         ### Data Load
         df = pd.read_csv(os.path.join(cfg.data_dir, cfg.train_data))
-
+        # Augmentation 설정
+        train_transforms, val_transform, val_tta_transform, test_tta_transform = get_augmentation(cfg, epoch=0)
+        val_augmented_ids = []
+        
         # Cross validation if n_folds >= 3
         if cfg.n_folds >= 3:
             # Augmentation 설정    
-            train_transforms, val_transform, val_tta_transform, test_tta_transform = get_augmentation(cfg, epoch=0)
+            # train_transforms, val_transform, val_tta_transform, test_tta_transform = get_augmentation(cfg, epoch=0)
             
-            train_losses_for_plot, val_losses_for_plot = [], []
-            train_acc_for_plot, val_acc_for_plot = [], []
-            train_f1_for_plot, val_f1_for_plot = [], []
             folds_es, folds_val_f1 = [], []
 
             skf = StratifiedKFold(n_splits=cfg.n_folds, shuffle=True, random_state=cfg.random_seed)
             for fold, (train_idx, val_idx) in enumerate(skf.split(df, df['target'])):
                 try:
+                    train_losses_for_plot, val_losses_for_plot = [], []
+                    train_acc_for_plot, val_acc_for_plot = [], []
+                    train_f1_for_plot, val_f1_for_plot = [], []
+
                     print(f"===== FOLD {fold+1} =====")
                     print("="*20)
                     train_df, val_df = df.iloc[train_idx], df.iloc[val_idx]
-                    # config.yaml에 class_imbalance 설정했을 경우,
-                    # offline cutout 증강으로 클래스 불균형을 맞춘다.
-                    augmented_ids, augmented_labels = [], []
-                    # 클래스 불균형 해소를 위한 이미지 offline 증강
-                    if hasattr(cfg, 'class_imbalance') and cfg.class_imbalance:
-                        augmented_ids, augmented_labels = augment_class_imbalance(cfg, train_df)
-                        imb_aug_df = pd.DataFrame({
-                            "ID": augmented_ids,
-                            "target": augmented_labels
-                        })
-                        # 기존 train 데이터 프레임과 병합
-                        train_df = pd.concat([train_df, imb_aug_df], ignore_index=True)
-                        train_df = train_df.reset_index(drop=True)
-                    # validation 데이터를 offline으로 eda 증강을 적용
-                    val_augmented_ids, augmented_labels = [], []
-                    if cfg.val_TTA:
-                        val_augmented_ids, augmented_labels = augment_validation(cfg, val_df)
-                        val_aug_df = pd.DataFrame({
-                            "ID": val_augmented_ids,
-                            "target": augmented_labels
-                        })
-                        # 기존 train 데이터 프레임과 병합
-                        val_df = pd.concat([val_df, val_aug_df], ignore_index=True)
-                        val_df = val_df.reset_index(drop=True)
-                    # train augmentation
-                    if cfg.online_augmentation:
-                        train_dataset = ImageDataset(train_df, os.path.join(cfg.data_dir, "train"), transform=train_transforms[0])
-                    sampler = None
-                    shuffle = True
-                    if cfg.weighted_random_sampler:
-                        targets = train_df['target'].values
-                        class_counts = np.bincount(targets)
-                        class_weights = 1. / class_counts
-                        weights = class_weights[targets]
-                        sampler = WeightedRandomSampler(weights, len(weights))
-                        shuffle = False
 
-                    val_dataset = ImageDataset(val_df, os.path.join(cfg.data_dir, "train"), transform=val_transform)
+                    trainer, fold_val_augmented_ids, val_df, val_loader = run_training_cycle(
+                        train_df, val_df, cfg, run=None, train_transforms=train_transforms, val_transform=val_transform
+                    ) # cross validation 시에는 wandb에 기록하지 않는다.
 
-                    if cfg.weighted_random_sampler:
-                        train_loader = DataLoader(train_dataset, batch_size=cfg.batch_size, sampler=sampler, shuffle=False, num_workers=8, pin_memory=True)
-                    else:
-                        train_loader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=8, pin_memory=True)
-                    val_loader = DataLoader(val_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
-
-                    # For TTA, we need a loader with raw images
-                    raw_transform = A.Compose([
-                        ToTensorV2()
-                    ])
-                    val_dataset_raw = ImageDataset(val_df, os.path.join(cfg.data_dir, "train"), transform=raw_transform)
-                    val_loader_raw = DataLoader(val_dataset_raw, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
-
-                    ### Define TrainModule
-                    # Model
-                    model = get_timm_model(cfg)
-                    class_weights = None
-                    if hasattr(cfg, 'class_weighting') and cfg.class_weighting:
-                        class_counts = train_df['target'].value_counts()
-                        weights = 1.0/class_counts
-                        class_weights = torch.tensor(weights, dtype=torch.float32).to(cfg.device)
-                    criterion = get_criterion(cfg, class_weights=class_weights)
-                    optimizer = get_optimizer(model, cfg)
-                    scheduler = get_scheduler(optimizer, cfg, steps_per_epoch=len(train_loader))
-
-                    trainer = TrainModule(
-                        model=model,
-                        criterion=criterion,
-                        optimizer=optimizer,
-                        scheduler=scheduler,
-                        train_loader=train_loader,
-                        valid_loader=val_loader,
-                        cfg=cfg,
-                        verbose=1,
-                        run=None #run don't use wandb logging while cross-validation
-                    )
-                    ### Train
-                    train_result = trainer.training_loop()
-                    if not train_result:
-                        raise ValueError("Failed to train model...")
                     # save fold results
                     train_losses_for_plot.append(trainer.train_losses_for_plot)
                     train_acc_for_plot.append(trainer.train_acc_for_plot)
@@ -232,13 +249,13 @@ if __name__ == "__main__":
                         data=val_loader,
                         transform_func=val_tta_transform,
                         cfg=cfg,
-                        run=run,
+                        run=None,
                         show=False,
                         savepath=os.path.join(cfg.submission_dir, f"val_confusion_matrix{'_TTA' if cfg.val_TTA else ''}_Fold{fold}.png")
                     )
                     folds_val_f1.append(val_f1)
                 finally:
-                    delete_offline_augmented_images(cfg=cfg, augmented_ids=augmented_ids)
+                    # delete_offline_augmented_images(cfg=cfg, augmented_ids=augmented_ids)
                     delete_offline_augmented_images(cfg=cfg, augmented_ids=val_augmented_ids)
                 
                 print("="*20)
@@ -254,152 +271,21 @@ if __name__ == "__main__":
             plot_cross_validation(train_f1_for_plot, val_f1_for_plot, "F1-score", cfg, show=False)
             best_epoch = int(np.mean(folds_es))
             print(f"📢  Avg F1: {np.mean(folds_val_f1):.5f}, Best Epoch: {best_epoch}")
-            # config.yaml에 class_imbalance 설정했을 경우,
-            # offline cutout 증강으로 클래스 불균형을 맞춘다.
-            augmented_ids, augmented_labels = [], []
-            try:
-                # 클래스 불균형 해소를 위한 이미지 offline 증강
-                if hasattr(cfg, 'class_imbalance') and cfg.class_imbalance:
-                    augmented_ids, augmented_labels = augment_class_imbalance(cfg, df)
-                    imb_aug_df = pd.DataFrame({
-                        "ID": augmented_ids,
-                        "target": augmented_labels
-                    })
-                    # 기존 train 데이터 프레임과 병합
-                    df = pd.concat([df, imb_aug_df], ignore_index=True)
-                    df = df.reset_index(drop=True)
-                sampler = None
-                shuffle = True
-                if cfg.weighted_random_sampler:
-                    targets = train_df['target'].values
-                    class_counts = np.bincount(targets) # 0~16 각각 클래스별 개수를 구함.
-                    class_weights = 1. / class_counts # 각 클래스별 개수에 따라 가중치 부여. 개수가 적은 클래스일수록 높은 가중치
-                    weights = class_weights[targets] # 각 데이터 샘플의 target을 weight로 치환한다.
-                    # 재현성 보장을 위한 generator 시드 고정
-                    g = get_generator(cfg)
-                    sampler = WeightedRandomSampler(weights, len(weights), generator=g)
-                # train augmentation
-                if cfg.online_augmentation:
-                    train_dataset = ImageDataset(df, os.path.join(cfg.data_dir, "train"), transform=train_transforms[0])
-                else:
-                    datasets = [ImageDataset(df, os.path.join(cfg.data_dir, "train"), transform=t) for t in train_transforms]
-                    train_dataset = ConcatDataset(datasets)
-                if cfg.weighted_random_sampler:
-                    train_loader = DataLoader(train_dataset, batch_size=cfg.batch_size, sampler=sampler, shuffle=False, num_workers=8, pin_memory=True)
-                else:
-                    train_loader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=8, pin_memory=True)
-                model = get_timm_model(cfg)
-                criterion = get_criterion(cfg)
-                optimizer = get_optimizer(model, cfg)
-                scheduler = get_scheduler(optimizer, cfg, steps_per_epoch=len(train_loader))
-                trainer = TrainModule(
-                    model=model,
-                    criterion=criterion,
-                    optimizer=optimizer,
-                    scheduler=scheduler,
-                    train_loader=train_loader,
-                    valid_loader=None,
-                    cfg=cfg,
-                    verbose=1,
-                    run=run
-                )
-                trainer.training_loop() # early stop 없이 best_epoch 만큼 학습한다.
-                ### Save Model
-                trainer.save_experiments(savepath=os.path.join(cfg.submission_dir, f'{next_run_name}.pth'))
+            # 전체 학습.
+            trainer, _, _, _ = run_training_cycle(
+                df, None, cfg, run, train_transforms=train_transforms, val_transform=val_transform
+            ) # 전체 train 데이터를 사용해 학습. val_df 없음.
+            trainer.save_experiments(savepath=os.path.join(cfg.submission_dir, f'{next_run_name}.pth'))
             
-            finally:
-                delete_offline_augmented_images(cfg=cfg, augmented_ids=augmented_ids)
 
         # No Cross Validation
         else:
             # Train-validation 분할
             train_df, val_df = train_test_split(df, test_size=cfg.val_split_ratio, random_state=cfg.random_seed, stratify=df['target'] if cfg.stratify else None)
-            # config.yaml에 class_imbalance 설정했을 경우,
-            # offline cutout 증강으로 클래스 불균형을 맞춘다.
-            augmented_ids, augmented_labels = [], []
-            # 클래스 불균형 해소를 위한 이미지 offline 증강
-            if hasattr(cfg, 'class_imbalance') and cfg.class_imbalance:
-                augmented_ids, augmented_labels = augment_class_imbalance(cfg, train_df)
-                imb_aug_df = pd.DataFrame({
-                    "ID": augmented_ids,
-                    "target": augmented_labels
-                })
-                # 기존 train 데이터 프레임과 병합
-                train_df = pd.concat([train_df, imb_aug_df], ignore_index=True)
-                train_df = train_df.reset_index(drop=True)
             
-            ### Dataset & DataLoader 
-            # Augmentation 설정    
-            train_transforms, val_transform, val_tta_transform, test_tta_transform = get_augmentation(cfg, epoch=0)
-
-            # validation 데이터를 offline으로 eda 증강을 적용
-            val_augmented_ids, augmented_labels = [], []
-            if cfg.val_TTA:
-                val_augmented_ids, augmented_labels = augment_validation(cfg, val_df)
-                val_aug_df = pd.DataFrame({
-                    "ID": val_augmented_ids,
-                    "target": augmented_labels
-                })
-                # 기존 train 데이터 프레임과 병합
-                val_df = pd.concat([val_df, val_aug_df], ignore_index=True)
-                val_df = val_df.reset_index(drop=True)
-
-            sampler = None
-            shuffle = True
-            if cfg.weighted_random_sampler:
-                targets = train_df['target'].values
-                class_counts = np.bincount(targets) # 0~16 각각 클래스별 개수를 구함.
-                class_weights = 1. / class_counts # 각 클래스별 개수에 따라 가중치 부여. 개수가 적은 클래스일수록 높은 가중치
-                weights = class_weights[targets] # 각 데이터 샘플의 target을 weight로 치환한다.
-                # 재현성 보장을 위한 generator 시드 고정
-                g = get_generator(cfg)
-                sampler = WeightedRandomSampler(weights, len(weights), generator=g)
-
-            # train augmentation
-            if cfg.online_augmentation:
-                train_dataset = ImageDataset(train_df, os.path.join(cfg.data_dir, "train"), transform=train_transforms[0])
-            else:
-                datasets = [ImageDataset(train_df, os.path.join(cfg.data_dir, "train"), transform=t) for t in train_transforms]
-                train_dataset = ConcatDataset(datasets)
-
-            val_dataset = ImageDataset(val_df, os.path.join(cfg.data_dir, "train"), transform=val_transform)
-
-            if cfg.weighted_random_sampler:
-                train_loader = DataLoader(train_dataset, batch_size=cfg.batch_size, sampler=sampler, shuffle=False, num_workers=8, pin_memory=True)
-            else:
-                train_loader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=8, pin_memory=True)
-            val_loader = DataLoader(val_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
-
-            # For TTA, we need a loader with raw images
-            raw_transform = A.Compose([
-                ToTensorV2()
-            ])
-            val_dataset_raw = ImageDataset(val_df, os.path.join(cfg.data_dir, "train"), transform=raw_transform)
-            val_loader_raw = DataLoader(val_dataset_raw, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
-
-            ### Define TrainModule
-            # Model
-            model = get_timm_model(cfg)
-            criterion = get_criterion(cfg)
-            optimizer = get_optimizer(model, cfg)
-            scheduler = get_scheduler(optimizer, cfg, steps_per_epoch=len(train_loader))
-
-            trainer = TrainModule(
-                model=model,
-                criterion=criterion,
-                optimizer=optimizer,
-                scheduler=scheduler,
-                train_loader=train_loader,
-                valid_loader=val_loader,
-                cfg=cfg,
-                verbose=1,
-                run=run
+            trainer, val_augmented_ids, val_df, val_loader = run_training_cycle(
+                train_df, val_df, cfg, run, train_transforms=train_transforms, val_transform=val_transform
             )
-
-            ### Train
-            train_result = trainer.training_loop()
-            if not train_result:
-                raise ValueError("Failed to train model...")
 
             ### Save Model
             trainer.save_experiments(savepath=os.path.join(cfg.submission_dir, f'{next_run_name}.pth'))
@@ -434,7 +320,7 @@ if __name__ == "__main__":
         test_df = pd.read_csv(os.path.join(cfg.data_dir, "sample_submission.csv"))
 
         if cfg.test_TTA:
-            test_dataset_raw = ImageDataset(test_df, os.path.join(cfg.data_dir, "test"), transform=raw_transform)
+            test_dataset_raw = ImageDataset(test_df, os.path.join(cfg.data_dir, "test"), transform=val_transform)
             test_loader_raw = DataLoader(test_dataset_raw, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
             print("Running TTA on test set...")
             test_preds = tta_predict(trainer.model, test_dataset_raw, test_tta_transform, device, cfg, flag='test')
@@ -472,7 +358,7 @@ if __name__ == "__main__":
 
         if run:
             # Log submission artifact
-            artifact = wandb.Artifact(f'submission-{next_run_name}', type='submission')
+            artifact = wandb.Artifact(f'submission-{next_run_name[:60]}...', type='submission')
             artifact.add_file(submission_path)
             run.log_artifact(artifact)
             run.finish()
@@ -480,7 +366,7 @@ if __name__ == "__main__":
     finally:
         if run:
             run.finish()
-        if augmented_ids:
+        if val_augmented_ids:
             ### Offline Augmentation 파일 삭제
-            delete_offline_augmented_images(cfg=cfg, augmented_ids=augmented_ids)
+            # delete_offline_augmented_images(cfg=cfg, augmented_ids=augmented_ids)
             delete_offline_augmented_images(cfg=cfg, augmented_ids=val_augmented_ids)

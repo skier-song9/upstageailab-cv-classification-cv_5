@@ -8,32 +8,27 @@ fine_tuning: "full" # fine-tuning 방법론
   # scratch : pretrained=False, 모델 구조만 사용하고 모든 가중치를 처음부터 학습시킨다.
 
 # Loss Function
-criterion: 'CrossEntropyLoss' # CrossEntropyLoss, FocalLoss, LabelSmoothingLoss
+criterion: 'FocalLoss' # CrossEntropyLoss, FocalLoss, LabelSmoothingLoss
 class_weighting: False # class에 가중치를 두어 Loss 계산
 label_smooth: 0.0
 # Optimizer
 # optimizer name: SGD, RMSprop, Momentum, NAG, Adam, AdamW, NAdam, RAdam, Adafactor
 # reference : https://www.notion.so/skier-song9/Pytorch-9cfee0520ed6468a94b024ea35e48018?source=copy_link#217c8d3f60f58044beeac55596433dc6
 optimizer_name: 'AdamW'
-# optimizer_params:
-lr: 0.1 # 1e-1
-weight_decay: 0.001 # 1e-3
+lr: 0.0001 # 1e-3 ~ 1e-4 사이의 값으로 시작
+weight_decay: 0.00001 # 1e-2 ~ 1e-5 사이의 값이 일반적
 
 # Scheduler
 # scheduler_name : StepLR, ExponentialLR, CosineAnnealingLR, OneCycleLR, ReduceLROnPlateau, CosineAnnealingWarmupRestarts
 # reference : https://www.notion.so/skier-song9/Pytorch-9cfee0520ed6468a94b024ea35e48018?source=copy_link#1d2c8d3f60f58026b71ad399ead029a9    
-scheduler_name: 'CosineAnnealingLR'
+scheduler_name: 'CosineAnnealingWarmupRestarts'
 scheduler_params:
-  T_max: 25
-  max_lr: 0.1 # 1e-2
-  min_lr: 0.0001 # 1e-4
-#   max_lr: 0.01 # for OneCycleLR
-  # step_size: 50 # for StepLR
-  # gamma: 0.1 # for StepLR, ExponentialLR
-  # T_max: 10000 # for CosineAnnealingLR
-  # mode: 'min' # for ReduceLROnPlateau
-  # factor: 0.1 # for ReduceLROnPlateau
-  # min_lr: 0 # for ReduceLROnPlateau
+  T_max: 35 # 💥 CosineAnnealingLR의 경우, epochs 값과 동일하게 설정. 
+              # CosineAnnealingWarmupRestarts의 경우 epochs와 동일하게 또는 작게 설정
+  max_lr: 0.001 # 최대 학습률: 0.001 ~ 0.0001사이에서 찾는 것이 일반적
+  min_lr: 0.00001 # 최소 학습률: 1e-5 ~ 1e-6 사이에서 찾는 것이 일반적
+  warmup: 0 # 학습률을 재시작할 때 min_lr에서 max_lr까지 선형적으로 증가시킬 epoch 수이다.
+  gamma: 0.9 # 학습률을 재시작할 때 이전 max_lr을 gamma만큼 감소시켜 재시작한다.
 
 # Other variables
 random_seed: 256
@@ -54,6 +49,9 @@ class_imbalance:
   aug_class: [1, 13, 14]
   max_samples: 70
 online_augmentation: True
+online_aug: 
+  mixup: True
+  cutmix: False
 augmentation: # normal augmentation : dynamic augmentation이 활성화되어 있으면 일반 augmentation은 자동으로 비활성화된다.
   eda: True
   dilation: False
@@ -65,10 +63,10 @@ dynamic_augmentation:
   enabled: True
   policies:
     weak:
-      end_epoch: 40
+      end_epoch: 15
       augs: ['easiest', 'basic']
     middle:
-      end_epoch: 80
+      end_epoch: 35
       augs: ['stilleasy', 'middle']
     strong:
       end_epoch: 300
@@ -80,6 +78,7 @@ val_TTA: True # Validation 시, Test Time Augmentation 사용 여부
 test_TTA: True # Inference 시, Test Time Augmentation 사용 여부
 tta_dropout: False # inference 시에도 model.train() 모드를 사용해 dropout을 활성화하는 방법
 mixed_precision: True # Mixed Precision 학습 사용 여부 > 사용하면 더 큰 batch_size 학습 가능
+two_stage: False
 
 # Model hyperparameters
 timm:
@@ -93,8 +92,8 @@ custom_layer: # custom classifier head를 사용하고 싶은 경우 설정. Non
 
 # Training hyperparameters
 epochs: 1000 # max epoch
-patience: 5 # early stopping patience
-batch_size: 64 # image_size, model_size, GPU RAM 에 따라 OOM이 발생하지 않도록 설정.
+patience: 10 # early stopping patience
+batch_size: 128 # image_size, model_size, GPU RAM 에 따라 OOM이 발생하지 않도록 설정.
 
 # W&B
 wandb:

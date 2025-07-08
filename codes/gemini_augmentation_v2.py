@@ -63,6 +63,29 @@ AUG = {
         A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=1),
         A.RandomBrightnessContrast(p=1),
     ]),
+    'easiest': A.Compose([
+        A.Rotate(
+            limit=(-20, 30),
+            fill=(255,255,255),
+            p=0.8, # 50% 확률로 적용
+        ),
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.5),
+        A.Transpose(p=0.5),   
+    ]),
+    'stilleasy': A.Compose([
+        A.Affine(
+            scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # X, Y 축 개별 스케일
+            translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}, # X, Y 축 개별 이동
+            rotate=(-15, 20), # 회전 각도
+            shear=(-10, 10),  # 전단 변환 (이미지를 기울임)
+            fill=(255,255,255), # 이미지 외부 = 흰색으로 채우기
+            p=0.8, # 50% 확률로 적용
+        ),
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.5),
+        A.Transpose(p=0.5),   
+    ]),
     'basic': A.Compose([ ### 색조/밝기/대비 변화를 최소화하고 기하학전 변환에 초점을 둔 약한 증강. 노이즈/블러도 없음.
         # 1. 픽셀 값 기반 변환 (이미지 자체의 픽셀 값에 영향을 줌)
         # 이 변환들은 기하학적 변환 전에 적용하는 것이 좋습니다.
@@ -99,7 +122,7 @@ AUG = {
         
         # 노이즈 효과 (둘 중 하나만 적용, 문서 품질 저하를 시뮬레이션)
         A.OneOf([
-            A.GaussNoise(std_range=(0.01, 0.3), p=1.0),
+            A.GaussNoise(std_range=(0.01, 0.2), p=1.0),
             A.ISONoise(color_shift=(0.01, 0.05), intensity=(0.1, 0.5), p=1.0)
         ], p=0.3), # 노이즈도 너무 강하면 인식 어렵기에 적당한 확률 (0.2 유지)
 

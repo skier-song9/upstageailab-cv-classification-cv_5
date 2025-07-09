@@ -127,12 +127,6 @@ if __name__ == "__main__":
             default='config.yaml', # 기본값 설정
             help='Name of the configuration YAML file (e.g., config.yaml, experiment_A.yaml)'
         )
-        parser.add_argument(
-            '--config2', # 2-stage 모델을 위한 config
-            type=str,
-            default='config2.yaml', # 기본값 설정
-            help='Name of the configuration YAML file (e.g., config.yaml, experiment_A.yaml)'
-        )
 
         args = parser.parse_args()
 
@@ -176,7 +170,6 @@ if __name__ == "__main__":
             f"es{cfg.patience}-"
             f"{aug_str_parts}-"  # 개선된 증강 문자열
             f"cv{cfg.n_folds}-"
-            f"2stage_{1 if cfg.two_stage else 0}-" # 2-stage 모델 사용 여부
             f"clsaug_{1 if cfg.class_imbalance else 0}-"
             f"vTTA_{1 if cfg.val_TTA else 0}-"
             f"tTTA_{1 if cfg.test_TTA else 0}-"

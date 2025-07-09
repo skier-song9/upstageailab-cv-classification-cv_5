@@ -1,5 +1,5 @@
 # Configuration for the training process
-model_name: 'resnet50.tv2_in1k' # timm model name
+model_name: 'convnextv2_base.fcmae_ft_in22k_in1k_384' # timm model name
 pretrained: True # timm pretrained 가중치 사용 여부
 fine_tuning: "full" # fine-tuning 방법론
   # full : pretrained=True, pretrained가중치를 전부 재학습시킨다. 
@@ -21,7 +21,7 @@ weight_decay: 0.00001 # 1e-2 ~ 1e-5 사이의 값이 일반적
 # Scheduler
 # scheduler_name : StepLR, ExponentialLR, CosineAnnealingLR, OneCycleLR, ReduceLROnPlateau, CosineAnnealingWarmupRestarts
 # reference : https://www.notion.so/skier-song9/Pytorch-9cfee0520ed6468a94b024ea35e48018?source=copy_link#1d2c8d3f60f58026b71ad399ead029a9    
-scheduler_name: 'CosineAnnealingLR'
+scheduler_name: 'CosineAnnealingWarmupRestarts'
 scheduler_params:
   T_max: 35 # 💥 CosineAnnealingLR의 경우, epochs 값과 동일하게 설정. 
               # CosineAnnealingWarmupRestarts의 경우 epochs와 동일하게 또는 작게 설정
@@ -49,6 +49,9 @@ class_imbalance:
   aug_class: [1, 13, 14]
   max_samples: 70
 online_augmentation: True
+online_aug:
+  mixup: False
+  cutmix: False
 augmentation: # normal augmentation : dynamic augmentation이 활성화되어 있으면 일반 augmentation은 자동으로 비활성화된다.
   eda: False
   dilation: False
@@ -64,7 +67,7 @@ dynamic_augmentation:
   policies:
     weak:
       end_epoch: 15
-      augs: ['easiest', 'basic']
+      augs: ['easiest', 'basic', 'erosion']
     middle:
       end_epoch: 35
       augs: ['stilleasy', 'eda']
@@ -82,6 +85,7 @@ mixed_precision: True # Mixed Precision 학습 사용 여부 > 사용하면 더 
 # Model hyperparameters
 timm:
   activation: None # ReLU, LeakyReLU, ELU, SELU, GELU, Tanh, PReLU, SiLU
+  drop_rate: 0.2
   # None 입력시 timm 모델의 기본 activation 사용
   # dropout과 같이 추가적인 옵션이 존재하는 경우, key: value 형태로 전달.
 custom_layer: # custom classifier head를 사용하고 싶은 경우 설정. None일 때 custom head 사용 안 함. 
@@ -91,8 +95,8 @@ custom_layer: # custom classifier head를 사용하고 싶은 경우 설정. Non
 
 # Training hyperparameters
 epochs: 1000 # max epoch
-patience: 5 # early stopping patience
-batch_size: 64 # image_size, model_size, GPU RAM 에 따라 OOM이 발생하지 않도록 설정.
+patience: 3 # early stopping patience
+batch_size: 32 # image_size, model_size, GPU RAM 에 따라 OOM이 발생하지 않도록 설정.
 
 # W&B
 wandb:
@@ -101,4 +105,4 @@ wandb:
 
 # Paths
 data_dir: "/data/ephemeral/home/upstageailab-cv-classification-cv_5/data"
-train_data: train0705a.csv
+train_data: train.csv

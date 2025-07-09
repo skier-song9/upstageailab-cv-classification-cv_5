@@ -296,6 +296,8 @@ class TrainModule():
 			if self.valid_loader is not None and self.es(self.model, val_loss, self.epoch_counter):
 				# early stopped 된 경우 if 문 안으로 들어온다.
 				done = True
+		if self.valid_loader is not None:
+			self.es.restore_best(self.model)
 		# except Exception as e:
 		# 	print(e)
 		# 	return False # training loop failed

@@ -15,7 +15,6 @@ from PIL import Image
 import torch.nn.functional as F
 import math
 from torch.optim.lr_scheduler import _LRScheduler
-from timm.scheduler import CosineLRScheduler
 import matplotlib.pyplot as plt
 
 def load_config(config_path='./config.yaml'):
@@ -303,17 +302,6 @@ def get_scheduler(optimizer, cfg, steps_per_epoch):
     # if cfg.scheduler_name == 'OneCycleLR':
     #     scheduler_params['steps_per_epoch'] = steps_per_epoch
     #     scheduler_params['epochs'] = cfg.epochs
-    if cfg.scheduler_name == 'CosineAnnealingWarmup':
-        scheduler = CosineLRScheduler(
-            optimizer,
-            t_initial=cfg.epochs,
-            lr_min=cfg.scheduler_params['min_lr'],
-            warmup_lr_init=cfg.scheduler_params['max_lr'],
-            warmup_t=cfg.scheduler_params['T_max'],
-            cycle_limit=1,
-            t_in_epochs=True,   # epoch 단위로 step(epoch) 호출
-        )
-        return scheduler
     
     # StepLR, ExponentialLR, CosineAnnealingLR, OneCycleLR, ReduceLROnPlateau
     SCHEDULERS = {
@@ -323,13 +311,11 @@ def get_scheduler(optimizer, cfg, steps_per_epoch):
         'OneCycleLR': lr_scheduler.OneCycleLR(optimizer, max_lr=cfg.scheduler_params['max_lr'], steps_per_epoch=steps_per_epoch, epochs=cfg.epochs),
         'ReduceLROnPlateau': lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=cfg.patience-5, min_lr=cfg.scheduler_params['min_lr']),
         'CosineAnnealingWarmupRestarts': CosineAnnealingWarmupRestarts(optimizer, first_cycle_steps=cfg.scheduler_params['T_max'], cycle_mult=1.0, max_lr=cfg.scheduler_params['max_lr'], min_lr=cfg.scheduler_params['min_lr'], warmup_steps=cfg.scheduler_params['warmup'], gamma=cfg.scheduler_params['gamma'])
-        # torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=cfg.scheduler_params['T_max'], T_mult=1, eta_min=cfg.scheduler_params['min_lr'], last_epoch=-1)
-        # CosineAnnealingWarmupRestarts(optimizer, first_cycle_steps=cfg.scheduler_params['T_max'], cycle_mult=1.0, max_lr=cfg.scheduler_params['max_lr'], min_lr=cfg.scheduler_params['min_lr'], warmup_steps=cfg.scheduler_params['warmup'], gamma=cfg.scheduler_params['gamma'])
     }
     return SCHEDULERS[cfg.scheduler_name]
 
 def plot_cross_validation(
-    train_metrics_list, val_metrics_list, title, cfg, show=False
+    train_metrics_list, val_metrics_list, title, cfg, show=False, model_type='A'
     ):
     """_summary_
 
@@ -355,7 +341,7 @@ def plot_cross_validation(
     else:
         plt.axhline(y=0.99, color='red', linestyle='--', label='(0.99)')
     plt.tight_layout()
-    savepath = os.path.join(cfg.submission_dir, f"cross-validation_{title}-plot.png")
+    savepath = os.path.join(cfg.submission_dir, f"Model{model_type}_cross-validation_{title}-plot.png")
     plt.savefig(savepath)
     print(f"⚙️ cross validation {title} plot saved in {savepath}")
     if show:

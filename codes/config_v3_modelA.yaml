@@ -21,12 +21,12 @@ weight_decay: 0.00001 # 1e-2 ~ 1e-5 사이의 값이 일반적
 # Scheduler
 # scheduler_name : StepLR, ExponentialLR, CosineAnnealingLR, OneCycleLR, ReduceLROnPlateau, CosineAnnealingWarmupRestarts
 # reference : https://www.notion.so/skier-song9/Pytorch-9cfee0520ed6468a94b024ea35e48018?source=copy_link#1d2c8d3f60f58026b71ad399ead029a9    
-scheduler_name: 'CosineAnnealingWarmupRestarts'
+scheduler_name: 'CosineAnnealingLR'
 scheduler_params:
   T_max: 35 # 💥 CosineAnnealingLR의 경우, epochs 값과 동일하게 설정. 
               # CosineAnnealingWarmupRestarts의 경우 epochs와 동일하게 또는 작게 설정
-  max_lr: 0.00001 # 최대 학습률: 0.01 ~ 0.001사이에서 찾는 것이 일반적
-  min_lr: 0.000001 # 최소 학습률: 1e-5 ~ 1e-6 사이에서 찾는 것이 일반적
+  max_lr: 0.0001 # 최대 학습률: 0.01 ~ 0.001사이에서 찾는 것이 일반적
+  min_lr: 0.00001 # 최소 학습률: 1e-5 ~ 1e-6 사이에서 찾는 것이 일반적
   warmup: 0 # 학습률을 재시작할 때 min_lr에서 max_lr까지 선형적으로 증가시킬 epoch 수이다.
   gamma: 0.9 # 학습률을 재시작할 때 이전 max_lr을 gamma만큼 감소시켜 재시작한다.
 
@@ -46,16 +46,16 @@ norm_std: [0.5, 0.5, 0.5]
 # Techniques
 weighted_random_sampler: False
 class_imbalance: 
-  aug_class: [1, 13, 14]
-  max_samples: 70
+  # aug_class: [1, 13, 14]
+  # max_samples: 70
 online_augmentation: True
-online_aug:
-  mixup: False
+online_aug: 
+  mixup: True
   cutmix: False
 augmentation: # normal augmentation : dynamic augmentation이 활성화되어 있으면 일반 augmentation은 자동으로 비활성화된다.
-  eda: False
+  eda: True
   dilation: False
-  erosion: False
+  erosion: True
   easiest: True
   stilleasy: False
   basic: False
@@ -63,11 +63,11 @@ augmentation: # normal augmentation : dynamic augmentation이 활성화되어 �
   aggressive: False
 # training epoch에 따라 동적으로 증강기법을 변환하는 방법
 dynamic_augmentation:
-  enabled: True
+  enabled: False
   policies:
     weak:
       end_epoch: 15
-      augs: ['easiest', 'basic', 'erosion']
+      augs: ['easiest', 'basic']
     middle:
       end_epoch: 35
       augs: ['stilleasy', 'eda']
@@ -86,6 +86,7 @@ mixed_precision: True # Mixed Precision 학습 사용 여부 > 사용하면 더 
 timm:
   activation: None # ReLU, LeakyReLU, ELU, SELU, GELU, Tanh, PReLU, SiLU
   drop_rate: 0.1
+  drop_path_rate: 0.1
   # None 입력시 timm 모델의 기본 activation 사용
   # dropout과 같이 추가적인 옵션이 존재하는 경우, key: value 형태로 전달.
 custom_layer: # custom classifier head를 사용하고 싶은 경우 설정. None일 때 custom head 사용 안 함. 
@@ -95,7 +96,7 @@ custom_layer: # custom classifier head를 사용하고 싶은 경우 설정. Non
 
 # Training hyperparameters
 epochs: 1000 # max epoch
-patience: 5 # early stopping patience
+patience: 7 # early stopping patience
 batch_size: 32 # image_size, model_size, GPU RAM 에 따라 OOM이 발생하지 않도록 설정.
 
 # W&B
@@ -104,5 +105,9 @@ wandb:
   log: True # log using wandb, if False then do not use wandb
 
 # Paths
-data_dir: "/data/ephemeral/home/upstageailab-cv-classification-cv_5/data"
+# Test 데이터셋이 있는 디렉토리
+# test_data_dir: "/data/ephemeral/home/upstageailab-cv-classification-cv_5/data"
+# Train 데이터셋이 있는 디렉토리
+data_dir: "/data/ephemeral/home/upstageailab-cv-classification-cv_5/aug_data_500_new1"
+# train.csv의 파일 이름.
 train_data: train.csv

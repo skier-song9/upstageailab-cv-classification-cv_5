@@ -1,5 +1,5 @@
 # Configuration for the training process
-model_name: 'convnextv2_nano.fcmae_ft_in22k_in1k_384' # timm model name
+model_name: 'convnextv2_base.fcmae_ft_in22k_in1k_384' # timm model name
 pretrained: True # timm pretrained 가중치 사용 여부
 fine_tuning: "full" # fine-tuning 방법론
   # full : pretrained=True, pretrained가중치를 전부 재학습시킨다. 
@@ -14,16 +14,16 @@ label_smooth: 0.0
 # Optimizer
 # optimizer name: SGD, RMSprop, Momentum, NAG, Adam, AdamW, NAdam, RAdam, Adafactor
 # reference : https://www.notion.so/skier-song9/Pytorch-9cfee0520ed6468a94b024ea35e48018?source=copy_link#217c8d3f60f58044beeac55596433dc6
-optimizer_name: 'AdamW'
+optimizer_name: 'Adafactor'
 lr: 0.0001 # 1e-3 ~ 1e-4 사이의 값으로 시작
 weight_decay: 0.00001 # 1e-2 ~ 1e-5 사이의 값이 일반적
 
 # Scheduler
-# scheduler_name : StepLR, ExponentialLR, CosineAnnealingLR, OneCycleLR, ReduceLROnPlateau, CosineAnnealingWarmupRestarts
+# scheduler_name : StepLR, ExponentialLR, CosineAnnealingLR, ReduceLROnPlateau, CosineAnnealingWarmupRestarts
 # reference : https://www.notion.so/skier-song9/Pytorch-9cfee0520ed6468a94b024ea35e48018?source=copy_link#1d2c8d3f60f58026b71ad399ead029a9    
-scheduler_name: 'CosineAnnealingLR'
+scheduler_name: 'CosineAnnealingWarmupRestarts'
 scheduler_params:
-  T_max: 35 # 💥 CosineAnnealingLR의 경우, epochs 값과 동일하게 설정. 
+  T_max: 25 # 💥 CosineAnnealingLR의 경우, epochs 값과 동일하게 설정. 
               # CosineAnnealingWarmupRestarts의 경우 epochs와 동일하게 또는 작게 설정
   max_lr: 0.0001 # 최대 학습률: 0.01 ~ 0.001사이에서 찾는 것이 일반적
   min_lr: 0.00001 # 최소 학습률: 1e-5 ~ 1e-6 사이에서 찾는 것이 일반적
@@ -54,9 +54,9 @@ online_aug: # Model B에선 mixup / cutmix 증강을 활용
   cutmix: False
 augmentation: # normal augmentation : dynamic augmentation이 활성화되어 있으면 일반 augmentation은 자동으로 비활성화된다.
   eda: True
-  dilation: False
+  dilation: True
   erosion: True
-  easiest: True
+  easiest: False
   stilleasy: False
   basic: False
   middle: False
@@ -96,7 +96,7 @@ custom_layer: # custom classifier head를 사용하고 싶은 경우 설정. Non
 
 # Training hyperparameters
 epochs: 1000 # max epoch
-patience: 7 # early stopping patience
+patience: 15 # early stopping patience
 batch_size: 64 # image_size, model_size, GPU RAM 에 따라 OOM이 발생하지 않도록 설정.
 
 # W&B

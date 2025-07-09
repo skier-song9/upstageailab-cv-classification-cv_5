@@ -321,14 +321,25 @@ if __name__ == "__main__":
         # Inference
         test_df = pd.read_csv(os.path.join(cfg.data_dir, "sample_submission.csv"))
 
+        test_dataset = ImageDataset(test_df, os.path.join(cfg.data_dir, "test"), transform=val_transform)
+        test_loader = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
+        tta_augs = [
+            A.Compose([A.HorizontalFlip(p=1.0), test_tta_transform]), # 수평 반전
+            A.Compose([A.VerticalFlip(p=1.0), test_tta_transform]),   # 수직 반전
+            A.Compose([A.Transpose(p=1.0), test_tta_transform]),      # 대칭 (Transposition)
+            A.Compose([A.Rotate(limit=(-10, 10), p=1.0), test_tta_transform]), # 미세한 회전
+            test_tta_transform # 증강하지 않는 원본 이미지 변환 (마지막에 추가)
+        ]
+        test_tta_dataset = TestTTAImageDataset(
+            dataframe=test_df,
+            img_dir=os.path.join(cfg.data_dir,"test"),
+            transforms_list=tta_augs
+        )
+
         if cfg.test_TTA:
-            test_dataset_raw = ImageDataset(test_df, os.path.join(cfg.data_dir, "test"), transform=val_transform) # 아무런 증강 적용 X
-            # test_loader_raw = DataLoader(test_dataset_raw, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
             print("Running TTA on test set...")
-            test_preds = tta_predict(trainer.model, test_dataset_raw, test_tta_transform, device, cfg, flag='test')
+            test_preds = tta_predict(trainer.model, test_tta_dataset, tta_augs, device, cfg, flag='test')
         else:
-            test_dataset = ImageDataset(test_df, os.path.join(cfg.data_dir, "test"), transform=val_transform)
-            test_loader = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
             print("Running inference on test set...")
             test_preds = predict(trainer.model, test_loader, device)
 

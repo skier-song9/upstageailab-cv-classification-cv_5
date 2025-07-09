@@ -16,6 +16,7 @@ import torch.nn.functional as F
 import math
 from torch.optim.lr_scheduler import _LRScheduler
 import matplotlib.pyplot as plt
+import cv2
 
 def load_config(config_path='./config.yaml'):
     """.yaml 설정 파일 읽기
@@ -67,6 +68,26 @@ class ImageDataset(Dataset):
             img = self.transform(image=np.array(img))['image']
         return img, target
     
+class TestTTAImageDataset(Dataset):
+    def __init__(self, dataframe, img_dir, transforms_list):
+        self.dataframe = dataframe
+        self.img_dir = img_dir
+        self.transforms_list = transforms_list # TTA 변환 리스트 (ToTensorV2 포함)
+    def __len__(self):
+        return len(self.dataframe) * len(self.transforms_list) # 각 이미지당 TTA 수만큼 증가
+    def __getitem__(self, idx):
+        original_idx = idx // len(self.transforms_list)
+        transform_idx = idx % len(self.transforms_list)
+
+        img_id = self.dataframe.iloc[original_idx]['ID']
+        img_path = os.path.join(self.img_dir, f"{img_id}")
+        image = cv2.imread(img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # OpenCV는 BGR, PIL은 RGB
+
+        transform_func = self.transforms_list[transform_idx]
+        augmented_image = transform_func(image=image)['image']
+        return augmented_image, original_idx, transform_idx # 원본 이미지의 인덱스를 함께 반환하여 나중에 취합
+
 ### Getters
 def get_activation(activation_option):
     ACTIVATIONS = {
@@ -308,7 +329,7 @@ def get_scheduler(optimizer, cfg, steps_per_epoch):
         'StepLR': lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1),
         'ExponentialLR': lr_scheduler.ExponentialLR(optimizer, gamma=0.1),
         'CosineAnnealingLR': lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.scheduler_params['T_max'], eta_min=cfg.scheduler_params['min_lr']),
-        'OneCycleLR': lr_scheduler.OneCycleLR(optimizer, max_lr=cfg.scheduler_params['max_lr'], steps_per_epoch=steps_per_epoch, epochs=cfg.epochs),
+        # 'OneCycleLR': lr_scheduler.OneCycleLR(optimizer, max_lr=cfg.scheduler_params['max_lr'], steps_per_epoch=steps_per_epoch, epochs=cfg.epochs),
         'ReduceLROnPlateau': lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=cfg.patience-5, min_lr=cfg.scheduler_params['min_lr']),
         'CosineAnnealingWarmupRestarts': CosineAnnealingWarmupRestarts(optimizer, first_cycle_steps=cfg.scheduler_params['T_max'], cycle_mult=1.0, max_lr=cfg.scheduler_params['max_lr'], min_lr=cfg.scheduler_params['min_lr'], warmup_steps=cfg.scheduler_params['warmup'], gamma=cfg.scheduler_params['gamma'])
     }

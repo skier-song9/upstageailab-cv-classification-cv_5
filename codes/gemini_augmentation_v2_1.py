@@ -382,7 +382,7 @@ def augment_validation(cfg, val_df):
     for idx, row in val_df.iterrows():
         img_id = row['ID']
         cls = row['target']
-        img_path = os.path.join(cfg.data_dir, 'aut_data/aug_val', img_id)
+        img_path = os.path.join(cfg.data_dir, 'train', img_id)
         # 이미지 로드 (OpenCV는 기본적으로 BGR로 로드)
         img = cv2.imread(img_path)
         # BGR 이미지를 RGB로 변환 (Albumentations는 RGB를 기대)

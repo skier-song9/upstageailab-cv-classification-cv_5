@@ -2,31 +2,10 @@ import cv2
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import os
+import torch
 import numpy as np
-from albumentations.core.transforms_interface import ImageOnlyTransform
-
-class Morphological(ImageOnlyTransform):
-    def __init__(self, scale=(1, 3), operation="dilation", always_apply=False, p=0.5):
-        super().__init__(always_apply, p)
-        self.scale = scale
-        self.operation = operation
-
-    def apply(self, img, **params):
-        # 커널 크기 랜덤 샘플링
-        k = np.random.randint(self.scale[0], self.scale[1] + 1)
-        kernel = np.ones((k, k), np.uint8)
-        
-        if self.operation == "dilation":
-            return cv2.dilate(img, kernel, iterations=1)
-        elif self.operation == "erosion":
-            return cv2.erode(img, kernel, iterations=1)
-        else:
-            raise ValueError(f"Unsupported operation: {self.operation}")
-
-    def get_transform_init_args_names(self):
-        return ("scale", "operation")
-
-A.Morphological = Morphological
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed # 멀티스레딩을 위한 모듈
 
 AUG = {
     'eda': A.Compose([
@@ -34,23 +13,27 @@ AUG = {
         A.ColorJitter(brightness=0.1, contrast=0.07, saturation=0.07, hue=0.07, p=1.0),
         # 공간 변형에 대한 증강
         A.Affine(
-            scale=(0.85, 1.15),
+            # scale=(0.85, 1.15),
             translate_percent=(-0.05,0.05),
             rotate=(-20,30),
-            cval=(255,255,255),
-            shear=(-5, 5),
+            fill=(255,255,255),
+            # shear=(-5, 5),
             p=1.0
         ),
         # x,y 좌표 반전 
-        A.HorizontalFlip(p=0.6),
-        A.VerticalFlip(p=0.6),
-        A.Transpose(p=0.6),    
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),
         # Blur & Noise
         A.OneOf([
             A.GaussianBlur(sigma_limit=(0.5, 2.5), p=1.0),
             A.Blur(blur_limit=(3, 9), p=1.0),
         ], p=1.0),
-        A.GaussNoise(var_limit=(0.0025, 0.2), p=1.0),            
+        A.GaussNoise(std_range=(0.0025, 0.2), p=1.0),            
     ]),
     'dilation': A.Compose([
         A.Morphological(p=1, scale=(1, 3), operation="dilation"),
@@ -59,14 +42,18 @@ AUG = {
             scale=(0.85, 1.15),
             translate_percent=(-0.05,0.05),
             rotate=(-20,30),
-            cval=(255,255,255),
-            shear=(-5, 5),
+            fill=(255,255,255),
+            # shear=(-5, 5),
             p=0.9
         ),
         # x,y 좌표 반전 
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),    
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),    
         A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=1),
         A.RandomBrightnessContrast(p=1),
     ]),
@@ -77,39 +64,51 @@ AUG = {
             scale=(0.85, 1.15),
             translate_percent=(-0.05,0.05),
             rotate=(-20,30),
-            cval=(255,255,255),
-            shear=(-5, 5),
+            fill=(255,255,255),
+            # shear=(-5, 5),
             p=0.9
         ),
         # x,y 좌표 반전 
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),    
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),   
         A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=1),
         A.RandomBrightnessContrast(p=1),
     ]),
     'easiest': A.Compose([
         A.Rotate(
             limit=(-20, 30),
-            value=(255,255,255),
-            p=0.8, # 50% 확률로 적용
+            fill=(255,255,255),
+            p=1.0, # 50% 확률로 적용
         ),
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),   
+        # x,y 좌표 반전 
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),   
     ]),
     'stilleasy': A.Compose([
         A.Affine(
-            scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # X, Y 축 개별 스케일
-            translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}, # X, Y 축 개별 이동
+            # scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # X, Y 축 개별 스케일
+            translate_percent=(-0.15, 0.15), # X, Y 축 개별 이동
             rotate=(-15, 20), # 회전 각도
-            shear=(-10, 10),  # 전단 변환 (이미지를 기울임)
-            cval=(255,255,255), # 이미지 외부 = 흰색으로 채우기
-            p=0.8, # 50% 확률로 적용
-        ),
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),   
+            # shear=(-10, 10),  # 전단 변환 (이미지를 기울임)
+            fill=(255,255,255), # 이미지 외부 = 흰색으로 채우기
+            p=1.0, # 50% 확률로 적용
+        ), 
+        # x,y 좌표 반전 > 100% 글자 반전
+        A.OneOf([
+            A.HorizontalFlip(p=1.0),
+            A.VerticalFlip(p=1.0),
+            A.Transpose(p=1),
+        ], p=0.8),
     ]),
     'basic': A.Compose([ ### 색조/밝기/대비 변화를 최소화하고 기하학전 변환에 초점을 둔 약한 증강. 노이즈/블러도 없음.
         # 1. 픽셀 값 기반 변환 (이미지 자체의 픽셀 값에 영향을 줌)
@@ -135,29 +134,34 @@ AUG = {
             scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # X, Y 축 개별 스케일
             translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}, # X, Y 축 개별 이동
             rotate=(-15, 20), # 회전 각도
-            shear=(-10, 10),  # 전단 변환 (이미지를 기울임)
+            # shear=(-10, 10),  # 전단 변환 (이미지를 기울임)
             p=0.5, # 50% 확률로 적용
-            cval=(255,255,255) # 이미지 외부 = 흰색으로 채우기
+            fill=(255,255,255) # 이미지 외부 = 흰색으로 채우기
         ),
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),            
+        # x,y 좌표 반전 
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),          
     ]),
     'middle': A.Compose([ # 노이즈/블러 + 기하학적 변환에 초점을 둔 중간 난이도의 변환
         
         # 노이즈 효과 (둘 중 하나만 적용, 문서 품질 저하를 시뮬레이션)
         A.OneOf([
-            A.GaussNoise(var_limit=(0.01, 0.2), p=1.0),
+            A.GaussNoise(std_range=(0.01, 0.2), p=1.0),
             A.ISONoise(color_shift=(0.01, 0.05), intensity=(0.1, 0.5), p=1.0)
-        ], p=0.3), # 노이즈도 너무 강하면 인식 어렵기에 적당한 확률 (0.2 유지)
+        ], p=0.6), # 노이즈도 너무 강하면 인식 어렵기에 적당한 확률 (0.2 유지)
 
         # 2. 기하학적 변환 및 문서 특화 변형 (형태 왜곡, 시점 변화)
         # Perspective, GridDistortion, ElasticTransform은 강한 비선형 변환이므로
         # OneOf로 묶거나 각자의 확률을 낮춰 과도한 왜곡을 방지합니다.
         # 여기서는 문서의 "찌그러짐/왜곡"을 시뮬레이션하기 위해 OneOf로 묶는 것이 효과적입니다.
         A.OneOf([
-            # 문서 원근 변환 (0.05~0.1 스케일은 적절)
-            A.Perspective(scale=(0.05, 0.1), p=1.0),
+            # 문서 원근 변환 > 아주 미세하게만 변화
+            A.Perspective(scale=(0.02, 0.04), fill=(255,255,255), p=1.0), 
             # 그리드 왜곡 (num_steps=5, distort_limit=0.1 적절)
             A.GridDistortion(num_steps=5, distort_limit=0.2, p=1.0),
         ], p=0.3), # 이 세 가지 강한 왜곡 중 하나를 30% 확률로 적용 (개별 p값이 1.0이므로 OneOf의 p가 중요)
@@ -167,29 +171,29 @@ AUG = {
         # 기본 기하학적 변환 (Shift, Scale, Rotate)
         # 문서의 경우 회전 제한이 중요 (원본에서 min(config.rotation_limit, 15)로 제한)
         A.Affine(
-            scale=(0.8, 1.2),
-            translate_percent=(-0.0625, 0.0625),
+            # scale=(0.8, 1.2),
+            translate_percent=(-0.25, 0.25),
             rotate=(-120, 120), # 회전 각도
-            shear=(-5, 5),  # 전단 변환 (이미지를 기울임)
+            # shear=(-5, 5),  # 전단 변환 (이미지를 기울임)
             p=1.0, 
-            cval=(255,255,255) # 이미지 외부 = 흰색으로 채우기
+            fill=(255,255,255) # 이미지 외부 = 흰색으로 채우기
         ),
 
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5)
+        # x,y 좌표 반전 > 100% 글자 반전
+        A.OneOf([
+            A.HorizontalFlip(p=1.0),
+            A.VerticalFlip(p=1.0),
+            A.Transpose(p=1),
+        ], p=0.8),
     ]),
     'aggressive': A.Compose([
         # 정보 가리기 및 혼합 (Occlusion & Mixing)
         # Train의 마스킹과 유사한 효과를 주어 모델이 특정 영역에 의존하지 않도록함
         A.CoarseDropout(
-            min_holes=3,
-            max_holes=5,
-            min_height=10,
-            max_height=35,
-            min_width=5,
-            max_width=45,
-            fill_value=(0,0,0),
+            num_holes_range=(3, 5),
+            hole_height_range=(10, 35),
+            hole_width_range=(5, 45),
+            fill=(0,0,0),
             p=0.9
         ),
         # 강력한 기하학적 변환
@@ -201,16 +205,21 @@ AUG = {
                 rotate=(-45, 45), # 회전 각도
                 shear=(-10, 10),  # 전단 변환 (이미지를 기울임)
                 p=1.0, # 50% 확률로 적용
-                cval=(255,255,255) # 이미지 외부 = 흰색으로 채우기
+                fill=(255,255,255) # 이미지 외부 = 흰색으로 채우기
             ),
-            A.Perspective(scale=(0.05, 0.1),pad_val=(255,255,255),p=1.0),
+            A.Perspective(scale=(0.05, 0.1),fill=(255,255,255),p=1.0),
         ], p=0.9),
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Transpose(p=0.5),
+        # x,y 좌표 반전 
+        A.OneOf([
+            A.Compose([
+                A.HorizontalFlip(p=1.0),
+                A.VerticalFlip(p=1.0),
+            ]),
+            A.Transpose(p=1),
+        ], p=0.8),
         # 노이즈 효과 (둘 중 하나만 적용, 문서 품질 저하를 시뮬레이션)
         A.OneOf([
-            A.GaussNoise(var_limit=(0.01, 0.3), p=1.0), 
+            A.GaussNoise(std_range=(0.01, 0.3), p=1.0), 
             A.ISONoise(color_shift=(0.01, 0.2), intensity=(0.1, 0.5), p=1.0)
         ], p=0.3), # 노이즈도 너무 강하면 인식 어렵기에 적당한 확률 
         A.OneOf([
@@ -218,7 +227,7 @@ AUG = {
             A.GaussianBlur(blur_limit=(3, 7), p=1.0),
             A.MotionBlur(blur_limit=(3, 7), p=1.0),
             # 이미지 품질을 낮춰 압축/해상도 저하 효과 모방
-            A.Downscale(scale_min=0.5, scale_max=0.75,p=1.0),
+            A.Downscale(scale_range=(0.5, 0.75), p=1.0),
         ], p=0.5),
 
         # 색상 및 대비의 급격한 변화
@@ -232,12 +241,13 @@ AUG = {
     ]),
 }
 
+
 def get_augmentation(cfg, epoch=0):
     common_resize_transform = A.Compose([
         # 긴 변을 기준으로 종횡비를 유지하며 resize
         A.LongestMaxSize(max_size=cfg.image_size),
         # cfg.image_size 정사각형으로 만들고, 여백은 흰색으로 채움.
-        A.PadIfNeeded(min_height=cfg.image_size, min_width=cfg.image_size, border_mode=cv2.BORDER_CONSTANT, value=(255, 255, 255), p=1.0),
+        A.PadIfNeeded(min_height=cfg.image_size, min_width=cfg.image_size, border_mode=cv2.BORDER_CONSTANT, fill=(255, 255, 255), p=1.0),
         A.Normalize(mean=cfg.norm_mean, std=cfg.norm_std),
         ToTensorV2(),
     ])
@@ -310,13 +320,10 @@ def augment_class_imbalance(cfg, train_df):
     cutout_transform = A.Compose([
         # 이미지 크기 조정
         A.CoarseDropout(
-            min_holes=1,
-            max_holes=2,  # num_holes_range=(1, 2) 대신
-            min_height=int(cfg.image_size * 0.05),
-            max_height=int(cfg.image_size * 0.1),
-            min_width=int(cfg.image_size * 0.05),
-            max_width=int(cfg.image_size * 0.2),
-            fill_value=(0, 0, 0),  # fill -> fill_value
+            num_holes_range=(1, 2), # 마스킹 개수
+            hole_height_range=(int(cfg.image_size * 0.05), int(cfg.image_size * 0.1)), # 마스킹의 높이 범위
+            hole_width_range=(int(cfg.image_size * 0.05), int(cfg.image_size * 0.2)), # 마스킹의 너비 범위
+            fill=(0,0,0), # 검정색 마스킹
             p=1.0
         )
     ])
@@ -379,7 +386,7 @@ def augment_validation(cfg, val_df):
     total_augmented = 0
     val_tta_transform = AUG['eda']
     # 증강 대상 클래스 루프
-    for idx, row in val_df.iterrows():
+    for idx, row in tqdm(val_df.iterrows(), desc="Augmenting Validation Images..."):
         img_id = row['ID']
         cls = row['target']
         img_path = os.path.join(cfg.data_dir, 'train', img_id)
@@ -418,3 +425,109 @@ def delete_offline_augmented_images(cfg, augmented_ids):
             print("Wrong filename:", file_path)
     print(_,"개 이미지 제거")
 
+def delete_offline_augmented_images_multithreaded(cfg, augmented_ids, num_threads=None):
+    """
+    오프라인 증강된 이미지를 멀티스레딩을 사용하여 효율적으로 삭제합니다.
+
+    Args:
+        cfg: 설정 객체 (cfg.data_dir을 포함해야 합니다).
+        augmented_ids: 삭제할 이미지 파일 이름(경로 제외) 리스트.
+        num_threads: 사용할 스레드 개수. None이면 CPU 코어 수에 따라 자동으로 결정됩니다.
+                     (일반적으로 파일 I/O는 I/O 바운드 작업이므로 CPU 코어 수보다 많게 설정해도 유리할 수 있습니다.)
+    """
+    train_dir = os.path.join(cfg.data_dir, 'train')
+    deleted_count = 0
+    wrong_filenames = []
+
+    # 스레드 풀 생성 (num_threads가 None이면 기본값으로 설정됨)
+    # 파일 I/O 작업은 CPU 바운드라기보다는 I/O 바운드이므로, num_threads를 CPU 코어 수보다 높게 설정해도 좋습니다.
+    # 하지만 너무 높게 설정하면 오버헤드가 발생할 수 있으니 적절한 값을 찾아야 합니다.
+    # 일반적으로 넉넉하게 10-30 사이의 값을 시도해볼 수 있습니다.
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        # 각 파일 삭제 작업을 스레드 풀에 제출
+        # executor.submit(함수, 인자1, 인자2, ...)
+        futures = {executor.submit(_delete_single_image, train_dir, filename): filename for filename in augmented_ids}
+
+        # tqdm을 사용하여 진행 상황 표시
+        # as_completed는 제출된 작업이 완료되는 순서대로 Future 객체를 반환합니다.
+        for future in tqdm(as_completed(futures), total=len(augmented_ids), desc="이미지 삭제 중"):
+            filename = futures[future]
+            try:
+                # 작업 결과를 가져옴 (삭제 성공 여부)
+                result = future.result()
+                if result:
+                    deleted_count += 1
+                else:
+                    wrong_filenames.append(filename) # 삭제 실패 시 기록
+            except Exception as exc:
+                # 스레드 내에서 예외 발생 시 처리
+                print(f'{filename} 삭제 중 예외 발생: {exc}')
+                wrong_filenames.append(filename)
+
+    print(f"{deleted_count}개 이미지 제거 완료.")
+    if wrong_filenames:
+        print(f"삭제에 실패했거나 찾을 수 없는 파일: {len(wrong_filenames)}개")
+        for wrong_file in wrong_filenames:
+            print(f"  - {os.path.join(train_dir, wrong_file)}")
+
+def _delete_single_image(train_dir, filename):
+    """
+    단일 이미지를 삭제하는 헬퍼 함수. 멀티스레딩 작업에 사용됩니다.
+    """
+    file_path = os.path.join(train_dir, filename)
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+            return True  # 성공적으로 삭제됨
+        except OSError as e:
+            # 권한 문제 등으로 삭제 실패 시
+            # print(f"파일 삭제 오류: {file_path} - {e}")
+            return False
+    else:
+        # print("Wrong filename:", file_path) # tqdm 사용 시 print가 너무 많아질 수 있으므로 주석 처리하거나 로그에 기록
+        return False # 파일이 존재하지 않음
+
+def mixup_collate_fn(batch, num_classes=17, alpha=0.4):
+    images, labels = zip(*batch)
+    images = torch.stack(images)          # [B, C, H, W] - 배치 내 이미지들을 스택하여 텐서로 만듭니다.
+    labels = torch.tensor(labels)         # [B] - 배치 내 라벨들을 텐서로 만듭니다.
+
+    lam = np.random.beta(alpha, alpha) # 람다(lam) 값을 베타 분포에서 샘플링합니다. Mixup의 핵심 가중치입니다.
+    batch_size = images.size(0)        # 현재 배치의 크기를 가져옵니다.
+    index = torch.randperm(batch_size) # 배치를 섞기 위한 무작위 인덱스를 생성합니다.
+
+    mixed_images = lam * images + (1 - lam) * images[index] # 원본 이미지와 섞인 이미지를 람다 값에 따라 혼합합니다.
+
+    labels_one_hot = torch.nn.functional.one_hot(labels, num_classes=num_classes).float() # 라벨을 원-핫 인코딩 형식으로 변환합니다.
+    mixed_labels = lam * labels_one_hot + (1 - lam) * labels_one_hot[index] # 원-핫 인코딩된 라벨과 섞인 라벨을 람다 값에 따라 혼합합니다.
+    
+    return mixed_images, mixed_labels # 혼합된 이미지와 혼합된 라벨을 반환합니다.
+
+def cutmix_collate_fn(batch, num_classes=17, alpha=1.0):
+    images, labels = zip(*batch)
+    images = torch.stack(images)
+    labels = torch.tensor(labels)
+
+    lam = np.random.beta(alpha, alpha)
+    batch_size, _, H, W = images.size()
+    index = torch.randperm(batch_size)
+
+    cut_rat = np.sqrt(1. - lam)
+    cut_w = int(W * cut_rat)
+    cut_h = int(H * cut_rat)
+
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
+
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bby1 = np.clip(cy - cut_h // 2, 0, H)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
+    bby2 = np.clip(cy + cut_h // 2, 0, H)
+
+    images[:, :, bby1:bby2, bbx1:bbx2] = images[index, :, bby1:bby2, bbx1:bbx2]
+    lam_adjusted = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (W * H))
+
+    labels_one_hot = torch.nn.functional.one_hot(labels, num_classes=num_classes).float()
+    mixed_labels = lam_adjusted * labels_one_hot + (1 - lam_adjusted) * labels_one_hot[index]
+
+    return images, mixed_labels

@@ -127,12 +127,6 @@ if __name__ == "__main__":
             default='config.yaml', # 기본값 설정
             help='Name of the configuration YAML file (e.g., config.yaml, experiment_A.yaml)'
         )
-        parser.add_argument(
-            '--config2', # 2-stage 모델을 위한 config
-            type=str,
-            default='config2.yaml', # 기본값 설정
-            help='Name of the configuration YAML file (e.g., config.yaml, experiment_A.yaml)'
-        )
 
         args = parser.parse_args()
 
@@ -176,7 +170,6 @@ if __name__ == "__main__":
             f"es{cfg.patience}-"
             f"{aug_str_parts}-"  # 개선된 증강 문자열
             f"cv{cfg.n_folds}-"
-            f"2stage_{1 if cfg.two_stage else 0}-" # 2-stage 모델 사용 여부
             f"clsaug_{1 if cfg.class_imbalance else 0}-"
             f"vTTA_{1 if cfg.val_TTA else 0}-"
             f"tTTA_{1 if cfg.test_TTA else 0}-"
@@ -229,6 +222,8 @@ if __name__ == "__main__":
                     trainer, fold_augmented_ids, fold_val_augmented_ids, val_df, val_loader = run_training_cycle(
                         train_df, val_df, cfg, run=None, train_transforms=train_transforms, val_transform=val_transform
                     ) # cross validation 시에는 wandb에 기록하지 않는다.
+                    # 명시적으로 best model state dict 복원
+                    trainer.es.restore_best(trainer.model)
 
                     # save fold results
                     train_losses_for_plot.append(trainer.train_losses_for_plot)
@@ -274,6 +269,8 @@ if __name__ == "__main__":
             trainer, _, _, _ = run_training_cycle(
                 df, None, cfg, run, train_transforms=train_transforms, val_transform=val_transform
             ) # 전체 train 데이터를 사용해 학습. val_df 없음.
+            # 명시적으로 best model state dict 복원
+            trainer.es.restore_best(trainer.model)
             trainer.save_experiments(savepath=os.path.join(cfg.submission_dir, f'{next_run_name}.pth'))
             
 
@@ -286,6 +283,8 @@ if __name__ == "__main__":
                 trainer, augmented_ids, val_augmented_ids, val_df, val_loader = run_training_cycle(
                     train_df, val_df, cfg, run, train_transforms=train_transforms, val_transform=val_transform
                 )
+                # 명시적으로 best model state dict 복원
+                trainer.es.restore_best(trainer.model)
 
                 ### Save Model
                 trainer.save_experiments(savepath=os.path.join(cfg.submission_dir, f'{next_run_name}.pth'))
@@ -323,8 +322,8 @@ if __name__ == "__main__":
         test_df = pd.read_csv(os.path.join(cfg.data_dir, "sample_submission.csv"))
 
         if cfg.test_TTA:
-            test_dataset_raw = ImageDataset(test_df, os.path.join(cfg.data_dir, "test"), transform=val_transform)
-            test_loader_raw = DataLoader(test_dataset_raw, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
+            test_dataset_raw = ImageDataset(test_df, os.path.join(cfg.data_dir, "test"), transform=val_transform) # 아무런 증강 적용 X
+            # test_loader_raw = DataLoader(test_dataset_raw, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
             print("Running TTA on test set...")
             test_preds = tta_predict(trainer.model, test_dataset_raw, test_tta_transform, device, cfg, flag='test')
         else:

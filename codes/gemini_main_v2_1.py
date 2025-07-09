@@ -32,10 +32,10 @@ import argparse
 #📢 project_root 설정 필수
 project_root = '/data/ephemeral/home/upstageailab-cv-classification-cv_5'
 sys.path.append(project_root)
-from codes.gemini_utils_v2 import *
-from codes.gemini_train_v2 import *
-from codes.gemini_augmentation_v2 import *
-from codes.gemini_evalute_v2 import *
+from codes.gemini_utils_v2_1 import *
+from codes.gemini_train_v2_1 import *
+from codes.gemini_augmentation_v2_1 import *
+from codes.gemini_evalute_v2_1 import *
 
 if __name__ == "__main__":
     run = None
@@ -46,7 +46,7 @@ if __name__ == "__main__":
         parser.add_argument(
             '--config',
             type=str,
-            default='config_v2.yaml', # 기본값 설정
+            default='config_v2_1.yaml', # 기본값 설정
             help='Name of the configuration YAML file (e.g., config.yaml, experiment_A.yaml)'
         )
         
@@ -136,17 +136,17 @@ if __name__ == "__main__":
         # Augmentation 설정    
         train_transforms, val_transform, val_tta_transform, test_tta_transform = get_augmentation(cfg, epoch=0)
 
-        # # validation 데이터를 offline으로 eda 증강을 적용
-        # val_augmented_ids, augmented_labels = [], []
-        # if cfg.val_TTA:
-        #     val_augmented_ids, augmented_labels = augment_validation(cfg, val_df)
-        #     val_aug_df = pd.DataFrame({
-        #         "ID": val_augmented_ids,
-        #         "target": augmented_labels
-        #     })
-        #     # 기존 train 데이터 프레임과 병합
-        #     val_df = pd.concat([val_df, val_aug_df], ignore_index=True)
-        #     val_df = val_df.reset_index(drop=True)
+        # validation 데이터를 offline으로 eda 증강을 적용
+        val_augmented_ids, augmented_labels = [], []
+        if cfg.val_TTA:
+            val_augmented_ids, augmented_labels = augment_validation(cfg, val_df)
+            val_aug_df = pd.DataFrame({
+                "ID": val_augmented_ids,
+                "target": augmented_labels
+            })
+            # 기존 train 데이터 프레임과 병합
+            val_df = pd.concat([val_df, val_aug_df], ignore_index=True)
+            val_df = val_df.reset_index(drop=True)
 
         # train augmentation
         if cfg.online_augmentation:

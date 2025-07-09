@@ -14,7 +14,9 @@ sys.path.append(
 	"/data/ephemeral/home/upstageailab-cv-classification-cv_5/codes"
 )
 
-from gemini_augmentation_v2 import get_augmentation
+from gemini_augmentation_v3 import get_augmentation
+from gemini_utils_v3 import *
+
 
 class EarlyStopping:
     def __init__(self, patience=5, min_delta=1e-6, restore_best_weights=True):
@@ -58,7 +60,7 @@ class EarlyStopping:
         return False
 	
 class TrainModule():
-	def __init__(self, model: torch.nn.Module, criterion, optimizer, scheduler, train_loader, valid_loader, cfg: SimpleNamespace, verbose:int =50, run=None):
+	def __init__(self, df, train_loader, valid_loader, cfg: SimpleNamespace, verbose:int =50, run=None):
 		'''
 		model, criterion, scheduler, train_loader, valid_loader 미리 정의해서 전달
 		cfg : es_patience, epochs 등에 대한 hyperparameters를 namespace 객체로 입력
@@ -68,10 +70,18 @@ class TrainModule():
 			assert hasattr(cfg, attr), f"AttributeError: There's no '{attr}' attribute in cfg."
 		assert verbose > 0 and verbose < cfg.epochs, f"Logging frequency({verbose}) MUST BE smaller than EPOCHS({cfg.epochs}) and positive value."
 		
-		self.model = model
-		self.criterion = criterion
-		self.optimizer = optimizer
-		self.scheduler = scheduler
+		# TrainModule 정의
+		self.model = get_timm_model(cfg)
+		class_weights = None
+		if hasattr(cfg, 'class_weighting') and cfg.class_weighting:
+			class_counts = df['target'].value_counts().sort_index()
+			weights = 1.0 / class_counts
+			class_weights = torch.tensor(weights.values, dtype=torch.float32).to(cfg.device)
+
+		self.criterion = get_criterion(cfg, class_weights=class_weights)
+		self.optimizer = get_optimizer(self.model, cfg)
+		self.scheduler = get_scheduler(self.optimizer, cfg, steps_per_epoch=len(train_loader))
+
 		self.train_loader = train_loader
 		self.valid_loader = valid_loader
 		self.cfg = cfg
@@ -161,7 +171,7 @@ class TrainModule():
 			self.model.train()
 		else:
 			self.model.eval()  # 평가 모드
-		self.model.eval()  # 평가 모드
+		# self.model.eval()  # 평가 모드
 		val_loss = 0
 		correct = 0 # classification
 		total = 0
@@ -246,8 +256,6 @@ class TrainModule():
 			# Scheduler step (호출 로직 통합 및 수정)
 			if self.cfg.scheduler_name == 'ReduceLROnPlateau':
 				self.scheduler.step(val_loss)
-			elif self.cfg.scheduler_name == 'CosineAnnealingWarmupRestarts':
-				self.scheduler.step(epoch=self.epoch_counter)
 			elif self.cfg.scheduler_name != 'OneCycleLR':
 				# CosineAnnealingLR, CosineAnnealingWarmupRestarts 등
 				# 대부분의 에포크 기반 스케줄러는 인자 없이 호출합니다.
@@ -296,14 +304,12 @@ class TrainModule():
 			if self.valid_loader is not None and self.es(self.model, val_loss, self.epoch_counter):
 				# early stopped 된 경우 if 문 안으로 들어온다.
 				done = True
-		if self.valid_loader is not None:
-			self.es.restore_best(self.model)
 		# except Exception as e:
 		# 	print(e)
 		# 	return False # training loop failed
 		return True # training loop succeed
 		
-	def plot_loss(self, show:bool=False, savewandb:bool=True, savedir:str=None):
+	def plot_loss(self, show:bool=False, savewandb:bool=True, savedir:str=None, model_type:str='A'):
 		"""loss, accuracy, f1-score에 대한 그래프 시각화 함수
 
 		:param bool show: plt.show()를 실행할 건지, defaults to False
@@ -323,13 +329,13 @@ class TrainModule():
 		if savedir is not None:
 			if os.path.exists(savedir):
 				os.makedirs(savedir, exist_ok=True)
-			savepath = os.path.join(savedir, "loss_plot.png")
+			savepath = os.path.join(savedir, f"Model{model_type}_loss_plot.png")
 			plt.savefig(savepath)
 			print(f"⚙️loss plot saved in {savepath}")
 		if show:
 			plt.show()
 		if savewandb and self.run is not None:
-			self.run.log({'loss_plot': wandb.Image(fig)}) # wandb
+			self.run.log({f'Model{model_type}_loss_plot': wandb.Image(fig)}) # wandb
 		plt.clf()
 		
 		# classification
@@ -343,13 +349,13 @@ class TrainModule():
 		plt.title("Train/Validation Accuracy Plot")
 		plt.grid()
 		if savedir is not None:
-			savepath = os.path.join(savedir, "accuracy_plot.png")
+			savepath = os.path.join(savedir, f"Model{model_type}_accuracy_plot.png")
 			plt.savefig(savepath)
 			print(f"⚙️accuracy plot saved in {savepath}")
 		if show:
 			plt.show()
 		if savewandb and self.run is not None:
-			self.run.log({'accuracy_plot': wandb.Image(fig)}) # wandb
+			self.run.log({f'Model{model_type}_accuracy_plot': wandb.Image(fig)}) # wandb
 		plt.clf()
 
 		# classification
@@ -363,13 +369,13 @@ class TrainModule():
 		plt.title("Train/Validation F1-score Plot")
 		plt.grid()
 		if savedir is not None:
-			savepath = os.path.join(savedir, "f1_plot.png")
+			savepath = os.path.join(savedir, f"Model{model_type}_f1_plot.png")
 			plt.savefig(savepath)
 			print(f"⚙️f1 plot saved in {savepath}")
 		if show:
 			plt.show()
 		if savewandb and self.run is not None:
-			self.run.log({'f1_plot': wandb.Image(fig)}) # wandb
+			self.run.log({f'Model{model_type}_f1_plot': wandb.Image(fig)}) # wandb
 		plt.clf()
 		return None
 		

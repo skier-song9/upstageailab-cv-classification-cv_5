@@ -9,6 +9,7 @@ from sklearn.metrics import f1_score, confusion_matrix
 import wandb
 import albumentations as A
 import matplotlib.image as mpimg
+from torch.utils.data import DataLoader
 
 def tta_predict(model, dataset, tta_transform, device, cfg, flag='val'):
     if cfg.tta_dropout:
@@ -33,32 +34,22 @@ def tta_predict(model, dataset, tta_transform, device, cfg, flag='val'):
                 predictions.extend(avg_preds.argmax(1))
         else: # inference time transform
             num = 0
-            for image, _ in tqdm(dataset, desc="test TTA Prediction"): # load batch
-                num += 1
-                if num > 5: break
-                tta_preds = []
-                image = image.clamp(0, 255).to(torch.uint8) 
-                image = image.permute(1, 2, 0).cpu().numpy() # H,W,C 로 변형
-                augs = [
-                    A.Compose([A.HorizontalFlip(p=1.0), tta_transform]), # 수평 반전
-                    A.Compose([A.VerticalFlip(p=1.0), tta_transform]),   # 수직 반전
-                    A.Compose([A.Transpose(p=1.0), tta_transform]),      # 대칭 (Transposition)
-                    A.Compose([A.Rotate(limit=(-10, 10), p=1.0), tta_transform]), # 미세한 회전
-                    tta_transform # 증강하지 않는 원본 이미지 변환 (마지막에 추가)
-                ]
-                for num_, transform_func in enumerate(augs):
-                    augmented_image = transform_func(image=image)['image']
-                    augmented_image = augmented_image.to(device)
-                    augmented_image = augmented_image.unsqueeze(0) # batch, H,W,C 로 변형
-                    outputs = model(augmented_image) # inference
-                    # print(f"num{num}-{num_}: {outputs.softmax(1).cpu().numpy()}")
-                    tta_preds.append(outputs.softmax(1).cpu().numpy()) # append inference result
-                    # del augmented_image
-                    # torch.cuda.empty_cache()
-                avg_preds = np.mean(tta_preds, axis=0) # 5 TTA 예측 결과 확률값을 평균 낸다.
-                
-                print(f"num{num}: {avg_preds.argmax(1)}")
-                predictions.extend(avg_preds.argmax(1))
+            test_loader_tta = DataLoader(dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=8, pin_memory=True)
+            all_tta_outputs = torch.zeros(len(dataset.dataframe), len(tta_transform), model.num_classes) # (원본 이미지 수, TTA 수, 클래스 수)
+            with torch.no_grad():
+                for images, original_indices, tta_indices in tqdm(test_loader_tta, desc="test TTA Prediction"):
+                    images = images.to(device)
+                    outputs = model(images)
+                    probabilities = outputs.softmax(1).cpu()
+
+                    # 배치 내의 각 결과에 대해 해당하는 원본 이미지 인덱스와 TTA 인덱스에 저장
+                    for i in range(len(original_indices)):
+                        orig_idx = original_indices[i].item()
+                        tta_idx = tta_indices[i].item()
+                        all_tta_outputs[orig_idx, tta_idx, :] = probabilities[i]
+            # 각 원본 이미지별 TTA 결과 확률을 평균내고, 가장 높은 확률의 클래스를 선택
+            avg_preds = torch.mean(all_tta_outputs, dim=1).numpy()
+            predictions = np.argmax(avg_preds, axis=1)
     return predictions
 
 def predict(model, loader, device):

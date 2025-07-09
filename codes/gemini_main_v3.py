@@ -413,12 +413,43 @@ if __name__ == "__main__":
         test_loader_a = DataLoader(test_dataset_a, batch_size=cfg_a.batch_size, shuffle=False, num_workers=8, pin_memory=True)    
         if cfg_a.test_TTA:
             print("Running TTA on test set...")
-            preds_a = tta_predict(trainer_a.model, test_dataset_a, test_tta_transform_a, device, cfg_a, flag='test')
+            tta_augs_a = [
+                A.Compose([A.HorizontalFlip(p=1.0), test_tta_transform_a]), # 수평 반전
+                A.Compose([A.VerticalFlip(p=1.0), test_tta_transform_a]),   # 수직 반전
+                A.Compose([A.Transpose(p=1.0), test_tta_transform_a]),      # 대칭 (Transposition)
+                A.Compose([A.Rotate(limit=(-10, 10), p=1.0), test_tta_transform_a]), # 미세한 회전
+                test_tta_transform_a # 증강하지 않는 원본 이미지 변환 (마지막에 추가)
+            ]
+            test_tta_dataset_a = TestTTAImageDataset(
+                dataframe=test_df,
+                img_dir=os.path.join(cfg_a.data_dir,"test"),
+                transforms_list=tta_augs_a
+            )
+            test_loader_a_tta = DataLoader(test_tta_dataset_a, batch_size=cfg_a.batch_size, shuffle=False, num_workers=8, pin_memory=True)
+            # preds_a = tta_predict(model_a, test_dataset_a, test_tta_transform_a, device, cfg_a, flag='test')
+            if cfg_a.tta_dropout:
+                trainer_a.model.train()
+            else:
+                trainer_a.model.eval()
+            all_tta_outputs_a = torch.zeros(len(test_df), len(tta_augs_a), trainer_a.model.num_classes) # (원본 이미지 수, TTA 수, 클래스 수)
+            with torch.no_grad():
+                for images, original_indices, tta_indices in tqdm(test_loader_a_tta, desc="test TTA Prediction"):
+                    images = images.to(device)
+                    outputs = trainer_a.model(images)
+                    probabilities = outputs.softmax(1).cpu()
+
+                    # 배치 내의 각 결과에 대해 해당하는 원본 이미지 인덱스와 TTA 인덱스에 저장
+                    for i in range(len(original_indices)):
+                        orig_idx = original_indices[i].item()
+                        tta_idx = tta_indices[i].item()
+                        all_tta_outputs_a[orig_idx, tta_idx, :] = probabilities[i]
+            # 각 원본 이미지별 TTA 결과 확률을 평균내고, 가장 높은 확률의 클래스를 선택
+            avg_preds_a = torch.mean(all_tta_outputs_a, dim=1).numpy()
+            preds_a = np.argmax(avg_preds_a, axis=1)
         else:
             print("Running inference on test set...")
             preds_a = predict(trainer_a.model, test_loader_a, device)
-        
-        preds_a = predict(trainer_a.model, test_loader_a, device)
+
         pred_A_df = test_df.copy()
         pred_A_df['target'] = preds_a
 
@@ -432,14 +463,44 @@ if __name__ == "__main__":
         ids_for_model_b = pred_A_df[pred_A_df['target'] == 0]
         pred_B_df = pd.DataFrame()
         if not ids_for_model_b.empty:
+            test_dataset_b = ImageDataset(ids_for_model_b, os.path.join(cfg_b.data_dir, "test"), transform=val_transform_b)
+            test_loader_b = DataLoader(test_dataset_b, batch_size=cfg_b.batch_size, shuffle=False, num_workers=8, pin_memory=True)    
             if cfg_b.test_TTA:
-                test_dataset_raw_b = ImageDataset(test_df, os.path.join(cfg_b.data_dir, "test"), transform=val_transform_b)
-                # test_loader_raw_b = DataLoader(test_dataset_raw_b, batch_size=cfg_b.batch_size, shuffle=False, num_workers=8, pin_memory=True)
                 print("Running TTA on test set...")
-                preds_b = tta_predict(trainer_b.model, test_dataset_raw_b, test_tta_transform_b, device, cfg_b, flag='test')
+                tta_augs_b = [
+                    A.Compose([A.HorizontalFlip(p=1.0), test_tta_transform_b]), # 수평 반전
+                    A.Compose([A.VerticalFlip(p=1.0), test_tta_transform_b]),   # 수직 반전
+                    A.Compose([A.Transpose(p=1.0), test_tta_transform_b]),      # 대칭 (Transposition)
+                    A.Compose([A.Rotate(limit=(-10, 10), p=1.0), test_tta_transform_b]), # 미세한 회전
+                    test_tta_transform_b # 증강하지 않는 원본 이미지 변환 (마지막에 추가)
+                ]
+                test_tta_dataset_b = TestTTAImageDataset(
+                    dataframe=ids_for_model_b,
+                    img_dir=os.path.join(cfg_b.data_dir,"test"),
+                    transforms_list=tta_augs_b
+                )
+                test_loader_b_tta = DataLoader(test_tta_dataset_b, batch_size=cfg_b.batch_size, shuffle=False, num_workers=8, pin_memory=True)
+                # preds_a = tta_predict(model_a, test_dataset_a, test_tta_transform_a, device, cfg_a, flag='test')
+                if cfg_b.tta_dropout:
+                    trainer_b.model.train()
+                else:
+                    trainer_b.model.eval()
+                all_tta_outputs_b = torch.zeros(len(ids_for_model_b), len(tta_augs_b), trainer_b.model.num_classes) # (원본 이미지 수, TTA 수, 클래스 수)
+                with torch.no_grad():
+                    for images, original_indices, tta_indices in tqdm(test_loader_b_tta, desc="test TTA Prediction"):
+                        images = images.to(device)
+                        outputs = trainer_b.model(images)
+                        probabilities = outputs.softmax(1).cpu()
+
+                        # 배치 내의 각 결과에 대해 해당하는 원본 이미지 인덱스와 TTA 인덱스에 저장
+                        for i in range(len(original_indices)):
+                            orig_idx = original_indices[i].item()
+                            tta_idx = tta_indices[i].item()
+                            all_tta_outputs_b[orig_idx, tta_idx, :] = probabilities[i]
+                # 각 원본 이미지별 TTA 결과 확률을 평균내고, 가장 높은 확률의 클래스를 선택
+                avg_preds_b = torch.mean(all_tta_outputs_b, dim=1).numpy()
+                preds_b = np.argmax(avg_preds_b, axis=1)
             else:
-                test_dataset_b = ImageDataset(ids_for_model_b, os.path.join(cfg_b.data_dir, "test"), transform=val_transform_b)
-                test_loader_b = DataLoader(test_dataset_a, batch_size=cfg_b.batch_size, shuffle=False, num_workers=8, pin_memory=True)    
                 print("Running inference on test set...")
                 preds_b = predict(trainer_b.model, test_loader_b, device)
             pred_B_df = ids_for_model_b.copy()
@@ -464,9 +525,22 @@ if __name__ == "__main__":
         final_submission_df.reset_index(inplace=True)
 
         # --- 제출 ---
-        submission_path = os.path.join(submission_dir, f"{next_run_name}.csv")
+        submission_path = os.path.join(submission_dir, f"{args.sub}.csv")
         final_submission_df.to_csv(submission_path, index=False)
         print(f"📢 Submission file saved to {submission_path}")
+
+        ### prediction class별 개수
+        try:
+            class_counts = final_submission_df['target'].value_counts().sort_index()
+            class_counts = class_counts.reset_index(drop=False)
+            meta = pd.read_csv(os.path.join(cfg_a.data_dir, "meta.csv"))
+            meta_dict = zip(meta['target'], meta['class_name'])
+            meta_dict = dict(meta_dict)
+            targets_class = list(map(lambda x: meta_dict[x], class_counts['target']))
+            class_counts['meta'] = targets_class
+            class_counts.to_csv(os.path.join(submission_dir, "submission_class_distribution.csv"), index=False)
+        except Exception as e:
+            print(e)
 
     except Exception as e:
         print(f"An error occurred: {e}")

@@ -96,7 +96,7 @@ custom_layer: # custom classifier head를 사용하고 싶은 경우 설정. Non
 
 # Training hyperparameters
 epochs: 1000 # max epoch
-patience: 15 # early stopping patience
+patience: 4 # early stopping patience
 batch_size: 32 # image_size, model_size, GPU RAM 에 따라 OOM이 발생하지 않도록 설정.
 
 # W&B

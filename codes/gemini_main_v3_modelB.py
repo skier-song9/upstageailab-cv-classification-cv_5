@@ -274,6 +274,7 @@ def train_hierarchical_model(model_type, cfg, df, run, train_transforms, val_tra
                 delete_offline_augmented_images_multithreaded(cfg, val_aug_ids, num_threads=12)
                 val_aug_ids = []
         return trainer
+## 저장된 trainer를 로드하여 추론하는 경우 아래 함수로 로드
 def load_checkpoint_model(savepath=None):
     if os.path.exists(savepath):
         checkpoint = torch.load(savepath)
@@ -289,14 +290,22 @@ if __name__ == "__main__":
     try:
         # python 파일 실행할 때 config.yaml 파일 이름을 입력받아서 설정 파일을 지정한다.
         parser = argparse.ArgumentParser(description="Run deep learning training with specified configuration.")
+        
         parser.add_argument(
-            '--config',
+            '--config2', # 2-stage 모델을 위한 config
+            type=str,
+            default=None, # 기본값 설정
+            help='Name of the configuration YAML file (e.g., config.yaml, experiment_A.yaml)'
+        )
+
+        parser.add_argument(
+            '--data', # model A의 저장 경로
             type=str,
             default=None, # 기본값 설정
             help='Name of the configuration YAML file (e.g., config.yaml, experiment_A.yaml)'
         )
         parser.add_argument(
-            '--config2', # 2-stage 모델을 위한 config
+            '--sub', # model A의 저장 경로
             type=str,
             default=None, # 기본값 설정
             help='Name of the configuration YAML file (e.g., config.yaml, experiment_A.yaml)'
@@ -305,15 +314,25 @@ if __name__ == "__main__":
         args = parser.parse_args()
 
         # Yaml 파일 읽기
-        cfg_a = load_config(
-            config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), args.config)
+        # cfg_a = load_config(
+        #     config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), args.config)
+        # )
+        
+        cfg_b = load_config(
+            config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), args.config2)
         )
-        if args.config2 is not None:
-            cfg_b = load_config(
-                config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), args.config2)
-            )
-        else:
-            cfg_b = SimpleNamespace(**{})
+
+        model_a_dir = os.path.join(project_root, args.data, "submissions", args.sub)
+        print("model dir:", model_a_dir)
+        import re
+        pattern = re.compile(r"ModelA-*\.pth", re.IGNORECASE)
+        model_a_filename = ""
+        for filename in os.listdir(model_a_dir):
+            if filename.startswith("ModelA-") and filename.endswith(".pht"):
+                print("ModelA:", filename)
+                model_a_filename = filename
+        model_a, cfg_a = load_checkpoint_model(os.path.join(model_a_dir, model_a_filename))
+
         # 랜덤성 제어
         set_seed(cfg_a.random_seed)
 
@@ -326,7 +345,7 @@ if __name__ == "__main__":
         print("⚙️ Device :",device)
         cfg_a.device = device
         cfg_b.device = device
-        CURRENT_TIME = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%y%m%d%H%M")
+        CURRENT_TIME = model_a_dir[:10]
         print(f"⌚ 실험 시간: {CURRENT_TIME}")
 
         # W&B 설정
@@ -342,20 +361,20 @@ if __name__ == "__main__":
         else:
             aug_str_parts += "offaug"
 
-        next_run_name = (
-            f"{CURRENT_TIME}-ModelA-"
-            f"{cfg_a.model_name}-"
-            f"opt_{cfg_a.optimizer_name}-"
-            f"sch_{cfg_a.scheduler_name}-"
-            f"img{cfg_a.image_size}-"
-            f"es{cfg_a.patience}-"
-            f"{aug_str_parts}-"  # 개선된 증강 문자열
-            f"cv{cfg_a.n_folds}-"
-            f"clsaug_{1 if cfg_a.class_imbalance else 0}-"
-            f"vTTA_{1 if cfg_a.val_TTA else 0}-"
-            f"tTTA_{1 if cfg_a.test_TTA else 0}-"
-            f"MP_{1 if cfg_a.mixed_precision else 0}"
-        )
+        # next_run_name = (
+        #     f"{CURRENT_TIME}-ModelA-"
+        #     f"{cfg_a.model_name}-"
+        #     f"opt_{cfg_a.optimizer_name}-"
+        #     f"sch_{cfg_a.scheduler_name}-"
+        #     f"img{cfg_a.image_size}-"
+        #     f"es{cfg_a.patience}-"
+        #     f"{aug_str_parts}-"  # 개선된 증강 문자열
+        #     f"cv{cfg_a.n_folds}-"
+        #     f"clsaug_{1 if cfg_a.class_imbalance else 0}-"
+        #     f"vTTA_{1 if cfg_a.val_TTA else 0}-"
+        #     f"tTTA_{1 if cfg_a.test_TTA else 0}-"
+        #     f"MP_{1 if cfg_a.mixed_precision else 0}"
+        # )
         if args.config2 is not None:
             next_run_name2 = (
                 f"{CURRENT_TIME}-ModelB-"
@@ -372,19 +391,19 @@ if __name__ == "__main__":
                 f"MP_{1 if cfg_b.mixed_precision else 0}"
             )
 
-        run = None 
-        if hasattr(cfg_a, 'wandb') and cfg_a.wandb['log']:
-            run = wandb.init(
-                project=f"{cfg_a.wandb['project']}-A{cfg_a.model_name[:15]}-B{cfg_b.model_name[:15]}",
-                name=next_run_name,
-                config=vars(cfg_a),
-            )
+        # run = None 
+        # if hasattr(cfg_a, 'wandb') and cfg_a.wandb['log']:
+        #     run = wandb.init(
+        #         project=f"{cfg_a.wandb['project']}-A{cfg_a.model_name[:15]}-B{cfg_b.model_name[:15]}",
+        #         name=next_run_name,
+        #         config=vars(cfg_a),
+        #     )
 
         ### submission 폴더 생성
         # 모델 저장, 시각화 그래프 저장, submission 파일 등등 저장 용도
-        submission_dir = os.path.join(cfg_a.data_dir, 'submissions', next_run_name)
+        submission_dir = os.path.join(cfg_a.data_dir, 'submissions', model_a_dir)
         try:
-            os.makedirs(submission_dir, exist_ok=False)
+            # os.makedirs(submission_dir, exist_ok=False)
             # cfg에 추가 
             cfg_a.submission_dir = submission_dir
             cfg_b.submission_dir = submission_dir
@@ -396,20 +415,18 @@ if __name__ == "__main__":
         df = pd.read_csv(os.path.join(cfg_a.data_dir, cfg_a.train_data))
         # --- 증강 설정 ---
         train_transforms_a, val_transform_a, val_tta_transform_a, test_tta_transform_a = get_augmentation(cfg_a, epoch=0)
-        if args.config2 is not None:
-            train_transforms_b, val_transform_b, val_tta_transform_b, test_tta_transform_b = get_augmentation(cfg_b, epoch=0)
+        train_transforms_b, val_transform_b, val_tta_transform_b, test_tta_transform_b = get_augmentation(cfg_b, epoch=0)
         # --- 모델 학습 ---
-        trainer_a = train_hierarchical_model('A', cfg_a, df, run, train_transforms_a, val_transform_a, val_tta_transform=val_tta_transform_a)
-        model_a_path = os.path.join(cfg_a.submission_dir, f'ModelA-{cfg_a.model_name}.pth')
-        del trainer_a
-        torch.cuda.empty_cache()
+        # trainer_a = train_hierarchical_model('A', cfg_a, df, run, train_transforms_a, val_transform_a, val_tta_transform=val_tta_transform_a)
+        
+        # torch.cuda.empty_cache()
 
-        if args.config2 is None:
-            exit(1)
+        # if args.config2 is None:
+        #     exit(1)
 
         # end Model A run
-        if run is not None:
-            run.finish()
+        # if run is not None:
+        #     run.finish()
         
         run = None 
         if hasattr(cfg_b, 'wandb') and cfg_b.wandb['log']:
@@ -420,19 +437,14 @@ if __name__ == "__main__":
             )
 
         trainer_b = train_hierarchical_model('B', cfg_b, df, run, train_transforms_b, val_transform_b, val_tta_transform=val_tta_transform_b)
-        model_b_path = os.path.join(cfg_b.submission_dir, f'ModelB-{cfg_b.model_name}.pth')
 
         if run is not None:
             run.finish()
             run = None
 
+
         # 추론 파트
         print("===== Starting Hierarchical Inference =====")
-        # load model A
-        model_a, cfg_a = load_checkpoint_model(
-            savepath=model_a_path
-        )
-
         test_df = pd.read_csv(os.path.join(cfg_a.data_dir, "sample_submission.csv"))
         print("Step a) Predicting with Model A...")
         test_dataset_a = ImageDataset(test_df, os.path.join(cfg_a.data_dir, "test"), transform=val_transform_a)
@@ -479,24 +491,15 @@ if __name__ == "__main__":
         pred_A_df = test_df.copy()
         pred_A_df['target'] = preds_a
 
-        del model_a
-        torch.cuda.empty_cache()
-
         # b) Model A에서 Hard Class가 아닌 경우 결과 취합
-        model_b, cfg_b = load_checkpoint_model(
-            savepath=model_b_path
-        )
-
         print("Step b) Collecting non-hard class predictions from Model A...")
         results_not_hard = pred_A_df[pred_A_df['target'] != 0].copy()
-        # results_not_hard = pred_A_df[pred_A_df['target'] != 7].copy()
         results_not_hard['target'] = results_not_hard['target'].apply(lambda x: INV_MODEL_A_CLASS_MAP.get(x))
         results_not_hard.to_csv(os.path.join(submission_dir,"model_B_preds.csv"), index=False)
 
         # c) Model A에서 Hard Class로 예측된 이미지를 Model B로 예측
         print("Step c) Predicting hard classes with Model B...")
         ids_for_model_b = pred_A_df[pred_A_df['target'] == 0]
-        # ids_for_model_b = pred_A_df[pred_A_df['target'] == 7]
         pred_B_df = pd.DataFrame()
         if not ids_for_model_b.empty:
             test_dataset_b = ImageDataset(ids_for_model_b, os.path.join(cfg_b.data_dir, "test"), transform=val_transform_b)
@@ -518,14 +521,14 @@ if __name__ == "__main__":
                 test_loader_b_tta = DataLoader(test_tta_dataset_b, batch_size=cfg_b.batch_size, shuffle=False, num_workers=8, pin_memory=True)
                 # preds_a = tta_predict(model_a, test_dataset_a, test_tta_transform_a, device, cfg_a, flag='test')
                 if cfg_b.tta_dropout:
-                    model_b.train()
+                    trainer_b.model.train()
                 else:
-                    model_b.eval()
-                all_tta_outputs_b = torch.zeros(len(ids_for_model_b), len(tta_augs_b), model_b.num_classes) # (원본 이미지 수, TTA 수, 클래스 수)
+                    trainer_b.model.eval()
+                all_tta_outputs_b = torch.zeros(len(ids_for_model_b), len(tta_augs_b), trainer_b.model.num_classes) # (원본 이미지 수, TTA 수, 클래스 수)
                 with torch.no_grad():
                     for images, original_indices, tta_indices in tqdm(test_loader_b_tta, desc="test TTA Prediction"):
                         images = images.to(device)
-                        outputs = model_b(images)
+                        outputs = trainer_b.model(images)
                         probabilities = outputs.softmax(1).cpu()
 
                         # 배치 내의 각 결과에 대해 해당하는 원본 이미지 인덱스와 TTA 인덱스에 저장
@@ -538,7 +541,7 @@ if __name__ == "__main__":
                 preds_b = np.argmax(avg_preds_b, axis=1)
             else:
                 print("Running inference on test set...")
-                preds_b = predict(model_b, test_loader_b, device)
+                preds_b = predict(trainer_b.model, test_loader_b, device)
             pred_B_df = ids_for_model_b.copy()
             pred_B_df['target'] = preds_b
         else:
@@ -562,7 +565,7 @@ if __name__ == "__main__":
         final_submission_df.reset_index(inplace=True)
 
         # --- 제출 ---
-        submission_path = os.path.join(submission_dir, f"{next_run_name}.csv")
+        submission_path = os.path.join(submission_dir, f"{args.sub}.csv")
         final_submission_df.to_csv(submission_path, index=False)
         print(f"📢 Submission file saved to {submission_path}")
 

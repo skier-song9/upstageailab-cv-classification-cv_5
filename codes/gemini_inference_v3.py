@@ -101,8 +101,20 @@ if __name__ == "__main__":
         ## 저장된 trainer를 로드하여 추론하는 경우 아래 함수로 로드
         
         submission_dir = os.path.join(project_root, args.data, "submissions", args.sub)
-        model_a_path = os.path.join(submission_dir, "ModelA-" + args.sub + ".pth")
-        model_b_path = os.path.join(submission_dir, "ModelB-" + args.sub + ".pth")
+        import re
+        pattern_modela = re.compile(r"ModelA_.*\.pth$", re.IGNORECASE)
+        pattern_modelb = re.compile(r"ModelB_.*\.pth$", re.IGNORECASE)
+        a_matching_files = []
+        b_matching_files = []
+        for filename in os.listdir(submission_dir):
+            if pattern_modela.match(filename):
+                a_matching_files.append(filename)
+            if pattern_modelb.match(filename):
+                b_matching_files.append(filename)
+        model_a_filename = a_matching_files[0]
+        model_b_filename = b_matching_files[0]
+        model_a_path = os.path.join(submission_dir, model_a_filename)
+        model_b_path = os.path.join(submission_dir, model_b_filename)
             
         model_a, cfg_a = load_checkpoint_model(
             savepath=model_a_path
@@ -173,12 +185,15 @@ if __name__ == "__main__":
 
         # b) Model A에서 Hard Class가 아닌 경우 결과 취합
         print("Step b) Collecting non-hard class predictions from Model A...")
-        results_not_hard = pred_A_df[pred_A_df['target'] != 0].copy()
+        results_not_hard = pred_A_df[pred_A_df['target'] != 0].copy() # 0이 아닌 클래스만 추출
+        # results_not_hard = pred_A_df[pred_A_df['target'] != 7].copy() # 0이 아닌 클래스만 추출
         results_not_hard['target'] = results_not_hard['target'].apply(lambda x: INV_MODEL_A_CLASS_MAP.get(x))
+        results_not_hard.to_csv(os.path.join(submission_dir,"model_B_preds.csv"), index=False)
 
         # c) Model A에서 Hard Class로 예측된 이미지를 Model B로 예측
         print("Step c) Predicting hard classes with Model B...")
-        ids_for_model_b = pred_A_df[pred_A_df['target'] == 0]
+        ids_for_model_b = pred_A_df[pred_A_df['target'] == 0] # Model A에서 0인 클래스의 ID만 추출
+        # ids_for_model_b = pred_A_df[pred_A_df['target'] == 7] # Model A에서 0인 클래스의 ID만 추출
         pred_B_df = pd.DataFrame()
         if not ids_for_model_b.empty:
             test_dataset_b = ImageDataset(ids_for_model_b, os.path.join(cfg_b.data_dir, "test"), transform=val_transform_b)
@@ -230,6 +245,7 @@ if __name__ == "__main__":
         print("Step d) Re-indexing Model B predictions...")
         if not pred_B_df.empty:
             pred_B_df['target'] = pred_B_df['target'].apply(lambda x: INV_MODEL_B_CLASS_MAP.get(x))
+            pred_B_df.to_csv(os.path.join(submission_dir,"model_B_preds.csv"), index=False)
 
         # e) 최종 결과 취합
         print("Step e) Combining results and creating submission file...")

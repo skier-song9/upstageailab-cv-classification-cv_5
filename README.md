@@ -2,7 +2,7 @@
 
 ## Team
 
-| ![송규헌](https://github.com/user-attachments/assets/dfe882c4-1a19-4487-a165-b31490002750) | ![이상현](https://github.com/user-attachments/assets/d292ca56-e0cb-4f7f-8e8f-42f581464139) | ![이영준](https://github.com/user-attachments/assets/e3fa8539-bcbd-462f-bbd1-641f16f22ebc) | ![조은별](https://github.com/user-attachments/assets/b755e973-4d09-43af-8c6d-f95b17e0b066) | ![편아현](https://github.com/user-attachments/assets/991dc1aa-04f7-45d7-9189-4316e7f5c62b) |
+| ![송규헌](https://avatars.githubusercontent.com/u/156163982?v=4) | ![이상현](https://avatars.githubusercontent.com/u/156163982?v=4) | ![이영준](https://avatars.githubusercontent.com/u/156163982?v=4) | ![조은별](https://avatars.githubusercontent.com/u/156163982?v=4) | ![편아현](https://avatars.githubusercontent.com/u/156163982?v=4) |
 | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: |
 |            [송규헌](https://github.com/skier-song9)             |            [이상현](https://github.com/yourshlee)             |            [이영준](https://github.com/ProDevJune)             |            [조은별](https://github.com/UpstageAILab)             |            [편아현](https://github.com/vusdkvus1)             |
 |                            팀장                             |                            팀원                             |                            팀원                             |                            팀원                             |                            팀원                             |
@@ -165,7 +165,8 @@ EDA 결과를 바탕으로 `Albumentations` 라이브러리를 사용하여 현�
 #### Final
 - Offline 증강 + Mixup Online 증강
 	- Offline 증강을 통해 클래스 불균형을 해고
-- Mixup 증강을 통해 결정 경계 강화하여 어려운 클래스에 대한 예측 성능을 높임.
+- Mixup 증강을 통해 결정 경계 강화하여 어려운 클래스에 대한 예측 성능을 높임
+
 ![aug](https://github.com/user-attachments/assets/ba94d2d2-66fb-48e6-b4a0-a100db7f29ef)
 
 #### Grad-CAM] 

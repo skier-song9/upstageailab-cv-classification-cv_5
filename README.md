@@ -2,7 +2,7 @@
 
 ## Team
 
-| ![송규헌](https://avatars.githubusercontent.com/u/156163982?v=4) | ![이상현](https://avatars.githubusercontent.com/u/156163982?v=4) | ![이영준](https://avatars.githubusercontent.com/u/156163982?v=4) | ![조은별](https://avatars.githubusercontent.com/u/156163982?v=4) | ![편아현](https://avatars.githubusercontent.com/u/156163982?v=4) |
+| ![송규헌](https://avatars.githubusercontent.com/u/113088511?v=4) | ![이상현](https://avatars.githubusercontent.com/u/48020255?v=4) | ![이영준](https://avatars.githubusercontent.com/u/97797643?v=4) | ![조은별](https://avatars.githubusercontent.com/u/48020255?v=4) | ![편아현](https://avatars.githubusercontent.com/u/83211745?v=4) |
 | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: |
 |            [송규헌](https://github.com/skier-song9)             |            [이상현](https://github.com/yourshlee)             |            [이영준](https://github.com/ProDevJune)             |            [조은별](https://github.com/UpstageAILab)             |            [편아현](https://github.com/vusdkvus1)             |
 |                            팀장                             |                            팀원                             |                            팀원                             |                            팀원                             |                            팀원                             |
@@ -30,9 +30,6 @@ uv pip install -r pyproject.toml
 - **목표**: 주어진 문서 이미지를 17개의 클래스로 분류하는 Task
 - **평가 지표**: Macro F1-Score
 
-### Timeline
-- 
-
 ## 2. Components
 
 ### Directory
@@ -42,7 +39,7 @@ uv pip install -r pyproject.toml
 │   ├── gemini_main.py
 │   ├── gemini_main_v2.py
 │   ├── gemini_main_v2_2.py
-│   └── gemini_custom_header.py  # 최종 모델 및 훈련 로직
+│   └── gemini_custom_header.py
 ├── configs/
 │   ├── config_v2.py 		# main_v2.py 설정 파일
 │   ├── config_v2_1.py		# main_v2_1.py 설정 파일
@@ -112,11 +109,13 @@ uv pip install -r pyproject.toml
 
 | Brightness_Train | Brightness_Test |
 |:----------------:|:----------------:|
-| ![Brightness_train](https://private-user-images.githubusercontent.com/113088511/460978521-a5f38a1d-a0ea-4b3f-9164-a0be1f463ec9.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDI1OTIsIm5iZiI6MTc1MjIwMjI5MiwicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc4NTIxLWE1ZjM4YTFkLWEwZWEtNGIzZi05MTY0LWEwYmUxZjQ2M2VjOS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMjUxMzJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1lYTY5OWM1OGI4ODk5MDNiNWFhYzZiZmExYjgzYmNiNDk2MGRiMDZlNzVlODQ1NzdiMTY2NmViYjk0YTQ0YjQ1JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.ZEbF4jEkah30kivuyUOtoPNg5WYGGOUt7ZpNFmQQDGY) | ![Brightness_test](https://private-user-images.githubusercontent.com/113088511/460978563-cf5ce0ad-0c5c-470e-b5d9-b628e8053d1e.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDI1OTIsIm5iZiI6MTc1MjIwMjI5MiwicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc4NTYzLWNmNWNlMGFkLTBjNWMtNDcwZS1iNWQ5LWI2MjhlODA1M2QxZS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMjUxMzJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT03OWQ4YTQxMjgyY2M2ZTcxZWRmNjlkMjJiZTdkYzdlZGFkN2YxYTQ1ZmM1YTYzM2JhNGVjMDQzNTRjMDg2ZDAxJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.xxmvh2fOOVqpprrlpsNinItC4AowrNM154-3sw_FmYI) |
+| ![train bright](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_bright.png) | ![test bright](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_bright.png) |
+
 
 | Contrast_Train | Contrast_Test |
 |:--------------:|:-------------:|
-| ![Contrast_train](https://private-user-images.githubusercontent.com/113088511/460978452-df6a7166-e5c4-4a7e-b9cc-c06c541604e0.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDI5OTcsIm5iZiI6MTc1MjIwMjY5NywicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc4NDUyLWRmNmE3MTY2LWU1YzQtNGE3ZS1iOWNjLWMwNmM1NDE2MDRlMC5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMjU4MTdaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1iYzZkZTNmMDU1N2IyNjU2MjgxZDY0ZmRkN2IxMTkxZGE5NDMwYWI4NGE0NTY2NWRjYzAzNTQzZGI0YTIzMGE2JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.E7Wg2pNExtxOpMNenT6njAclhxAptIBAOa7dgTVFHjQ) | ![Contrast_test](https://private-user-images.githubusercontent.com/113088511/460978491-f9cd86c8-c08a-4945-9d94-f2ca9efa4def.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDI5OTcsIm5iZiI6MTc1MjIwMjY5NywicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc4NDkxLWY5Y2Q4NmM4LWMwOGEtNDk0NS05ZDk0LWYyY2E5ZWZhNGRlZi5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMjU4MTdaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT04ZDEzM2YyZTFlNTY5ZTI4OWE0MGY0ZmQxZWZhYzkzNzYyYzI4ZTBjZDAzMDU4ZDM5Mzc0NmQ2NjhlZGQzMTg0JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.lncYcFrmMB6lvSKRM2IUTOTk1uAqt99XnX1W_IuELjo) |
+| ![train contrast](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_contrast.png) | ![test contrast](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_contrast.png) |
+
 
 
 #### **선명도 및 노이즈**: Test 데이터셋은 Train 데이터셋보다 더 흐릿하고(blur), 노이즈가 많습니다.
@@ -125,11 +124,13 @@ uv pip install -r pyproject.toml
 
 | Blurriness_Train | Blurriness_Test |
 |:----------------:|:----------------:|
-| ![Blurriness_train](https://private-user-images.githubusercontent.com/113088511/460978339-c22358eb-d076-44f3-a4dc-9c74d0fbad97.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDIzMDQsIm5iZiI6MTc1MjIwMjAwNCwicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc4MzM5LWMyMjM1OGViLWQwNzYtNDRmMy1hNGRjLTljNzRkMGZiYWQ5Ny5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMjQ2NDRaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT01YjI1YTM3ODNhZDQxNGFmYmZhNWRiYzE4YjRhM2ZkYzVlMjljNTYxZTRkMTg3NWExYjI2ZDM4NTA4MTNlZGQ4JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.3NzFCLNdiR-6V8tuAEhwPs6ILnyyMHYGjA02TqhVpuk) | ![Blurriness_test](https://private-user-images.githubusercontent.com/113088511/460978394-b87d1fc9-06cf-46ac-b3b3-0641fe82c3a7.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDIzMDQsIm5iZiI6MTc1MjIwMjAwNCwicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc4Mzk0LWI4N2QxZmM5LTA2Y2YtNDZhYy1iM2IzLTA2NDFmZTgyYzNhNy5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMjQ2NDRaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1hZWY5MDQ5MDA2MzQ2MWE3MTkzNzE5NTQ1MzA1ZmFjNWJiNGM2ZTNiNDI3MDBiZjZhMmMxNDdjZmZiYjk2YTVhJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.2r3WnQ61hm7bgM7BCF70Gk8Ekpy3MFpACNgTJUaEuuM) |
+| ![train blur](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_blur.png) | ![test blur](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_blur.png) |
+
 
 | Noise_Train | Noise_Test |
 |:-----------:|:----------:|
-| ![Noise_train](https://private-user-images.githubusercontent.com/113088511/460978146-7276c8d7-8288-4e6b-93d1-30a2837c50bb.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDI1OTIsIm5iZiI6MTc1MjIwMjI5MiwicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc4MTQ2LTcyNzZjOGQ3LTgyODgtNGU2Yi05M2QxLTMwYTI4MzdjNTBiYi5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMjUxMzJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT05Y2M5ZGFiODY3ZjIxODZhMTRlYTZlYzM1ZTU3MzRjM2QxOTkxZjg0NzBlZWU4YjI0Y2IzZjNkZjkzYjgwODUzJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.vjwVwp98p4xLKLsVQAgV8kv-dKe7eypjXKTsOZxGfZo) | ![Noise_test](https://private-user-images.githubusercontent.com/113088511/460978191-c3bb2bf8-d61f-4e4e-9886-e7cb2410f310.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDI1OTIsIm5iZiI6MTc1MjIwMjI5MiwicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc4MTkxLWMzYmIyYmY4LWQ2MWYtNGU0ZS05ODg2LWU3Y2IyNDEwZjMxMC5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMjUxMzJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT03OTc2ZmExZWJjZjFhNWY0NGM1NzFmZWU2MzYxZWVjZjk2ZjBjZDNhMmU0Y2QxMTAwMDUxYWZkZTc2NmY4YmY4JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.A5U0HDAKLWly36i02fj4xMSmZui7zUAUPaXnt83M1pI) |
+| ![train noise](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_noise.png) | ![test noise](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_noise.png) |
+
 
 
 #### **회전 및 종횡비**: Test 데이터셋은 0~360도의 다양한 회전이 적용된 이미지가 많으며, 특정 종횡비(4:3)의 비율이 Train 데이터셋보다 높습니다.
@@ -138,11 +139,13 @@ uv pip install -r pyproject.toml
 
 | Aspect_Train | Aspect_Test |
 |:------------:|:-----------:|
-| ![Aspect_train](https://private-user-images.githubusercontent.com/113088511/460978017-82ce5699-ec59-478a-acb9-90bcbbebfad3.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDM1MjksIm5iZiI6MTc1MjIwMzIyOSwicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc4MDE3LTgyY2U1Njk5LWVjNTktNDc4YS1hY2I5LTkwYmNiYmViZmFkMy5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMzA3MDlaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1hOTg0MmFjNjlhMmM2MTI2Y2Y3ODYxODc1Mzc5ZWNlNGM2ZmM3MmM5YjBlYjhkOTQ5NmY5ZWYzNTYxNTE2YmViJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.FSUMaiVXSeYyhTF8thlJi8HHj0s1byieT2EoQF6FLl4) | ![Aspect_test](https://private-user-images.githubusercontent.com/113088511/460978075-34d2386e-a0b1-44c0-996b-ff4a5f787cb4.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDM1MjksIm5iZiI6MTc1MjIwMzIyOSwicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc4MDc1LTM0ZDIzODZlLWEwYjEtNDRjMC05OTZiLWZmNGE1Zjc4N2NiNC5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMzA3MDlaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT04N2IwNzdiNGEzMDA3MzI5OTliY2YwMDQ3NzBjY2JlZTk3N2UyYzM4ZWQzMjA3MTY0MzY4YWYyMDJjODk2ZjBkJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.VMnQ_hMTXH5y6tKPYWw1u-b3EkYjyAIF2swHewkkcZI) |
+| ![train aspect](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_aspect.png) | ![test aspect](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_aspect.png) |
+
 
 | Rotation_Train | Rotation_Test |
 |:--------------:|:-------------:|
-| ![Rotation_train](https://private-user-images.githubusercontent.com/113088511/460977605-7bf98908-921b-40dd-b2ae-a185f6ba09f8.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDM1MjksIm5iZiI6MTc1MjIwMzIyOSwicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc3NjA1LTdiZjk4OTA4LTkyMWItNDBkZC1iMmFlLWExODVmNmJhMDlmOC5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMzA3MDlaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0zYWMzZThlODBhODBiMzc0MjIzNzc1NmQwNzUzMjE5OTIzMWNlYzNjYzA3YWQ5YzQ2OWZmMjAyYjI2MDg2NjVkJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.8BSRi4nObF102uvPouTiJUmfKOT1sTvUGF3dmmeEM3o) | ![Rotation_test](https://private-user-images.githubusercontent.com/113088511/460977907-b80e41e5-44a1-4c86-a2c9-64e3909b8747.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTIyMDM1MjksIm5iZiI6MTc1MjIwMzIyOSwicGF0aCI6Ii8xMTMwODg1MTEvNDYwOTc3OTA3LWI4MGU0MWU1LTQ0YTEtNGM4Ni1hMmM5LTY0ZTM5MDliODc0Ny5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNzExJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDcxMVQwMzA3MDlaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0zMGY1Y2EyZmQ4YTkzOTlkNmI3ZDZmNDkyZGZhNTVhOWJjNTg5OTliYmU1ZDY3ZWZlMDJkZTYwM2I3YzdjYTdkJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.ibcwXxxd54zgztxh9JZ91Wy3tcRWoDxXoTmm6o_mANM) |
+| ![train rotation](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/train_rotation.png) | ![test rotation](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/images/test_rotation.png) |
+
 
 이러한 EDA 결과는 데이터 증강 및 모델 구조 설계에 핵심적인 단서로 활용되었습니다.
 
@@ -211,7 +214,7 @@ EDA 결과를 바탕으로 `Albumentations` 라이브러리를 사용하여 현�
 ![cv_result](https://github.com/user-attachments/assets/f8dea727-c18a-48c9-8821-4b47d69a2b36)
 
 ### Presentation
-- https://www.canva.com/design/DAGsyh7kKGw/rbDFnwCmdgDTNvrcs8tJiQ/edit
+- [Presentation PDF](https://github.com/AIBootcamp13/upstageailab-cv-classification-cv_5/blob/main/docs/%5B%ED%8C%A8%EC%8A%A4%ED%8A%B8%EC%BA%A0%ED%8D%BC%EC%8A%A4%5D-AI-%EB%B6%80%ED%8A%B8%EC%BA%A0%ED%94%84-13%EA%B8%B0_CV-%EA%B2%BD%EC%A7%84%EB%8C%80%ED%9A%8C-5%EC%A1%B0.pdf)
 
 ### Meeting Log
 - https://www.notion.so/5-21140cb3731d80949942cdc0f9d2ceae?source=copy_link
